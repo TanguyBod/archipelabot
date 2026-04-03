@@ -1,11 +1,17 @@
-from websockets.sync.client import connect, ClientConnection
+from websockets.asyncio.client import connect
 import json
 from time import sleep
 import uuid
+import asyncio
+from queue import Queue
 
 # All configuration will be defined in a config.json file.
 
 config = json.load(open("config.json", "r"))
+
+items_received = Queue() # Queue of items received from the server, to be send by the discord bot
+json_received = Queue() # Queue of json messages received from the server, to be send by the discord bot
+
     
 class TrackerClient() :
     tags : set[str] = {'TextOnly', 'Tracker', 'DeathLink'}
@@ -19,30 +25,39 @@ class TrackerClient() :
         self.password = self.password if self.password else ""
         self.slot_name : str = config["ArchipelagoConfig"]["bot_slot"]
         self.uuid : int = uuid.getnode()
-        self.ap_connection : ClientConnection = None
+        self.ap_connection = None
         
-    def connect(self) :
-        self.ap_connection = connect(
+    async def connect(self) :
+        self.ap_connection = await connect(
             f"ws://{self.client_url}:{self.client_port}",
             max_size=None
         )
     
-    def run(self) :
+    async def run(self) :
         while True :
             try :
-                messages = self.ap_connection.recv(timeout=1)
+                messages = await self.ap_connection.recv()
                 messages = json.loads(messages)
                 for message in messages :
                     print(message)
                     if message["cmd"] == "RoomInfo" :
-                        self.send_connect()
+                        # Check DataPackage
+                        await self.check_data_package()
+                        await self.send_connect()
             except TimeoutError as e :
                 pass
             except Exception as e :
                 print(f"Error receiving message: {e}")
                 break
+    
+    async def check_data_package(self) -> None :
+        print("-- Checking DataPackage.")
+        payload = {
+            'cmd': 'GetDataPackage'
+        }
+        await self.send_message(payload)
             
-    def send_connect(self) -> None:
+    async def send_connect(self) -> None:
         print("-- Sending `Connect` packet to log in to server.")
         payload = {
             'cmd': 'Connect',
@@ -54,11 +69,11 @@ class TrackerClient() :
             'items_handling': self.items_handling,
             'uuid': self.uuid,
         }
-        self.send_message(payload)
+        await self.send_message(payload)
         
-    def send_message(self, message: dict) -> None :
+    async def send_message(self, message: dict) -> None :
         try :
-            self.ap_connection.send(json.dumps([message]))
+            await self.ap_connection.send(json.dumps([message]))
         except Exception as e :
             print(f"Error sending message: {e}")
         
@@ -66,5 +81,5 @@ client_url = "141.253.103.79"
 client_port = "38281"
 
 tracker_client = TrackerClient()
-tracker_client.connect()
-tracker_client.run()
+asyncio.run(tracker_client.connect())
+asyncio.run(tracker_client.run())
