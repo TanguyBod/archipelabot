@@ -1,8 +1,13 @@
 {
     "ArchipelagoConfig": {
-        "client_url" : "141.253.103.79",
-        "client_port" : "38281",
+        "client_url" : "",
+        "client_port" : "",
         "password" : null,
-        "bot_slot" : "Bridgeipelago"
+        "bot_slot" : ""
+    },
+    "DiscordConfig": {
+        "app_token" : "",
+        "normal_channel_id" : "",
+        "admin_channel_id" : ""
     }
 }
