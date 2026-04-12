@@ -89,7 +89,7 @@ class TrackerClient() :
             for data in data_list :
                 await messages_to_send.put(data['text'])
         if message["type"] == "ItemSend" :
-            msg_str = ""; flag = None
+            msg_str = ""; flag = None; item_player = Item()
             msg_summary = []; player_recieving = None; player_sending = None
             for data in message["data"] :
                 if data["text"].strip() in ["(", ")"] :
@@ -101,6 +101,7 @@ class TrackerClient() :
                     player_sending = await self.player_db.get_player_by_slot(player_slot)
                     msg_str += f"{player_sending.player_name}"
                     msg_summary.append(f"{player_sending.player_name}")
+                    item_player.player_sending = player_sending
                 elif data["type"] == "item_id" :
                     item_id = data["text"]
                     player_recieving = await self.player_db.get_player_by_slot(int(data["player"]))
@@ -110,6 +111,10 @@ class TrackerClient() :
                     item_name = self.datapackage["data"]["games"][game_receiving]["id_to_item_name"][item_id]
                     msg_str += f"\u001b[0;{color}m{item_name}\u001b[0m"
                     msg_summary.append(item_name)
+                    item_player.item_name = item_name
+                    item_player.item_id = item_id
+                    item_player.game = game_receiving
+                    item_player.flag = flag
                 elif data["type"] == "location_id" :
                     location_id = data["text"]
                     player_sending = await self.player_db.get_player_by_slot(int(data["player"]))
@@ -117,13 +122,15 @@ class TrackerClient() :
                     location_name = self.datapackage["data"]["games"][game_sending]["id_to_location_name"][location_id]
                     msg_str += f"\nCheck: {location_name}"
                     msg_summary.append(location_name)
+                    item_player.location_name = location_name
+                    item_player.location_id = location_id
                 else :
                     print(f"Unknown data type : {data["type"]}")
             if player_recieving is None :
                 raise ValueError(f"Player receiving item not found in message : {message}")
             if player_sending.player_slot == player_recieving.player_slot :
-                player_recieving.new_items.append((msg_summary, flag))
-            await messages_to_send.put(msg_str)
+                # Put here Item, Location, Player
+                player_recieving.new_items.append(item_player)
         else :
             print(f"Unknown message type : {message['type']}")
 
@@ -203,7 +210,7 @@ class Player :
         self.player_game = player_game
         self.player_name = player_name
         self.discord_id = discord_id
-        self.new_items = [] # List of new items received, to be sent to discord when queried
+        self.new_items: list[Item] = [] # List of new items received, to be sent to discord when queried
 
 class PlayerDB :
     def __init__(self) :
@@ -251,6 +258,26 @@ class PlayerDB :
     async def print_players(self) -> None :
         for player in self.players.values() :
             print(f"Player {player.player_name or 'Unknown'} in slot {player.player_slot or 'Unknown'} playing {player.player_game or 'Unknown'} registered to discord id {player.discord_id or 'Unknown'}.")
+
+class Item :
+    def __init__(self,
+                 item_name : str = None,
+                 item_id : int = None,
+                 game : str = None,
+                 location_name : str = None,
+                 location_id: int = None,
+                 player_sending : Player = None,
+                 player_recieving : Player = None,
+                 flag : int = None
+                 ) :
+        self.item_name = item_name
+        self.item_id = item_id
+        self.game = game
+        self.location_name = location_name
+        self.location_id = location_id
+        self.player_sending = player_sending
+        self.player_recieving = player_recieving
+        self.flag = flag
 
 # Init player db and tracker :
 tracker_client = TrackerClient()
@@ -318,12 +345,24 @@ async def new(ctx) :
             await user.create_dm() 
         await user.dm_channel.send("You have not received any new items since the last time you checked.")
     else :
-        msg_str = f"You have received {len(player.new_items)} new item(s) since the last time you checked :\n"
-        for item_summary, flag in player.new_items :
-            color = await get_ansi_color_from_flag(flag)
-            msg_str += f"\u001b[0;{color}m- {' | '.join(item_summary)}\u001b[0m\n"
-        await ctx.send(msg_str)
-        player.new_items = [] # Clear new items after sending
+        msg = "```ansi\n"
+        l1 = len(player.player_name) + 2
+        l2 = max(len(item.item_name) for item in player.new_items) + 2
+        l3 = max(len(item.player_sending.player_name) for item in player.new_items) + 2
+        l4 = max(len(item.location_name) for item in player.new_items) + 2
+        msg += f"{'You'.ljust(l1)} || {'Item'.ljust(l2)} || {'Sender'.ljust(l3)} || {'Location'.ljust(l4)}\n"
+        for item in player.new_items :
+            color = await get_ansi_color_from_flag(item.flag)
+            msg += f"{player.player_name.ljust(l1)} || \u001b[0;{color}m{item.item_name.ljust(l2)}\u001b[0m || {item.player_sending.player_name.ljust(l3)} || {item.location_name.ljust(l4)}\n"
+            if len(msg) > 1900 : # Discord message limit is 2000 characters, keep some margin
+                msg += "```"
+                await ctx.send(msg)
+                msg = "```ansi\n"
+        msg += "```"
+        await ctx.send(msg)
+        for item in player.new_items :
+            player.new_items.remove(item)
+            del item
 
 @tasks.loop(seconds=1)
 async def process_new_items():
