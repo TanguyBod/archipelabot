@@ -23,6 +23,7 @@ class ArchipelagoClient(ABC) :
         self.nb_workers = 4
         self.workers_started = False
         self.game = ''
+        self.worker_tasks = []
     
     async def connect(self) :
         self.ap_connection = await connect(
@@ -55,7 +56,6 @@ class ArchipelagoClient(ABC) :
             try:
                 await self.connect()
                 if not self.workers_started:
-                    self.worker_tasks = []
                     for _ in range(self.nb_workers):
                         task = asyncio.create_task(self.process_messages())
                         self.worker_tasks.append(task)

@@ -28,3 +28,27 @@ class Item:
         player_sending={self.player_sending.player_name if self.player_sending else None}, \
         player_recieving={self.player_recieving.player_name if self.player_recieving else None}, \
         flag={self.flag or 'None'})"
+    
+    def save(self):
+        return {
+            "item_name": self.item_name,
+            "item_id": self.item_id,
+            "game": self.game,
+            "location_name": self.location_name,
+            "location_id": self.location_id,
+            "player_sending": self.player_sending.player_name if self.player_sending else None,
+            "player_recieving": self.player_recieving.player_name if self.player_recieving else None,
+            "flag": self.flag
+        }
+    
+    def load(data):
+        item = Item(
+            item_name=data.get("item_name"),
+            item_id=data.get("item_id"),
+            game=data.get("game"),
+            location_name=data.get("location_name"),
+            location_id=data.get("location_id"),
+            flag=data.get("flag")
+        )
+        # player_sending and player_recieving will be set later when we have access to the PlayerDB
+        return item

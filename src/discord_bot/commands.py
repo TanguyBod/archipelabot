@@ -1,6 +1,7 @@
 from archipelago.hint_client import HintClient
 from models.button import Button
 from utils.colors import get_ansi_color_from_flag
+from discord_bot.texts_flavors import get_clear_todolist_flavor, get_todolist_flavor, get_empty_todolist_flavor
 import asyncio
 
 def setup_commands(bot):
@@ -61,11 +62,18 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             await ctx.send(f"Player {player_name} successfully registered to discord user {ctx.author.name}#{ctx.author.discriminator}.")
 
     @bot.command()
-    async def unregister(ctx, player_name: str) :
+    async def unregister(ctx, player_name: str = None) :
         # Check if player name is valid
-        if player_name not in bot.tracker_client.player_db.get_all_players_names() :
+        if not player_name :
+            player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
+            if player is None :
+                await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
+            else :
+                bot.tracker_client.player_db.set_discord_id(player, None)
+                await ctx.send(f"Player {player.player_name} successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
+        elif player_name not in bot.tracker_client.player_db.get_all_players_names() :
             await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
-    Available player names are : {', '.join(bot.tracker_client.player_db.get_all_players_names())}")
+Available player names are : {', '.join(bot.tracker_client.player_db.get_all_players_names())}")
         else :
             player = bot.tracker_client.player_db.get_player_by_name(player_name)
             if player.discord_id is None :
@@ -140,11 +148,13 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         elif player.todolist == [] :
-            await ctx.send(f"All is good, nobody needs you")
+            flavor = get_empty_todolist_flavor()
+            await ctx.send(flavor)
         else :
             async with bot.tracker_client.lock:
                 items = list(player.todolist)
-            msg = "```ansi\nBehold: the highly negotiated list of items your teammates absolutely needed\n\n"
+            flavor = get_todolist_flavor()
+            msg = f"```ansi\n{flavor}\n\n"
             l1 = max(len(item.player_recieving.player_name) for item in items)
             l2 = max(len(item.item_name) for item in items) + 2
             l3 = max(len(item.location_name) for item in items) + 2
@@ -156,4 +166,17 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                     await ctx.send(msg)
                     msg = "```ansi\n"
             msg += "```"
+            await ctx.send(msg)
+
+        
+    @bot.command()
+    async def clear_todo(ctx) :
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            async with bot.tracker_client.lock:
+                player.todolist.clear()
+            msg = get_clear_todolist_flavor()
             await ctx.send(msg)

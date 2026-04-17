@@ -14,7 +14,7 @@ class TrackerClient(ArchipelagoClient) :
         self.tags = set({'TextOnly', 'Tracker', 'DeathLink'})
         self.slot_name : str = config["ArchipelagoConfig"]["bot_slot"]
         self.ap_connection = None
-        self.player_db = PlayerDB()
+        self.player_db = PlayerDB(config["DatabaseConfig"]["data_directory"]+"/players.json")
         self.datapackage = None
         self.lock = asyncio.Lock() # Lock to protect shared resources
         self.workers_started = False
@@ -106,15 +106,28 @@ class TrackerClient(ArchipelagoClient) :
                 print(f"Item sent from {player_sending.player_name} added to player {player_recieving.player_name} new items list.")
                 async with self.lock:
                     player_recieving.new_items.append(item_player)
+            await self.remove_item_from_todolist(item_player)
             msg_str = "```ansi\n"+ msg_str +"\n```"
             await self.messages_to_send.put(msg_str)
         else :
             print(f"Unknown message type : {message['type']}")
 
+    async def remove_item_from_todolist(self, item: Item) -> bool :
+        player_sending = self.player_db.get_player_by_name(item.player_sending.player_name)
+        for item_todo in player_sending.todolist :
+            if item.item_name == item_todo.item_name and item.location_name == item_todo.location_name :
+                player_sending.todolist.remove(item_todo)
+                if item.player_recieving.allow_ping :
+                    await self.messages_to_send.put(f"<@{item.player_recieving.discord_id}> The item {item.item_name} you wanted from {item.player_sending.player_name} has been sent!")
+                else :
+                    await self.messages_to_send.put(f"The item {item.item_name} that {item.player_recieving.player_name} wanted from {item.player_sending.player_name} has been sent!")
+                return True
+        return False
+
     async def check_data_package(self) -> None :
         print("-- Checking DataPackage.")
-        if os.path.exists(self.datapackage_path) :
-            async with aiofiles.open(self.datapackage_path, "r") as f:
+        if os.path.exists(self.reversed_datapackage_path) :
+            async with aiofiles.open(self.reversed_datapackage_path, "r") as f:
                 self.datapackage = json.loads(await f.read())
             return
         payload = {
