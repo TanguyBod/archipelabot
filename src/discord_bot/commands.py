@@ -1,4 +1,5 @@
 from archipelago.hint_client import HintClient
+from models.button import Button
 from utils.colors import get_ansi_color_from_flag
 import asyncio
 
@@ -22,7 +23,13 @@ def setup_commands(bot):
                 # Send all messages in the queue :
                 while not hint_client_instance.discord_bot_queue.empty() :
                     message = await hint_client_instance.discord_bot_queue.get()
-                    await ctx.send(message)
+                    try :
+                        message, item = message
+                        button = Button(item, bot.tracker_client)
+                        message = await ctx.send(message, view=button)
+                        button.message = message
+                    except :
+                        await ctx.send(message)
                 # Terminate hint client
                 await hint_client_instance.stop()
             except Exception as e :
@@ -39,7 +46,7 @@ def setup_commands(bot):
         # Check if player name is valid
         if player_name not in bot.tracker_client.player_db.get_all_players_names() :
             await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
-    Available player names are : {', '.join(bot.tracker_client.player_db.get_all_players_names())}")
+Available player names are : {', '.join(bot.tracker_client.player_db.get_all_players_names())}")
         elif bot.tracker_client.player_db.get_player_by_name(player_name).discord_id is not None :
             player = bot.tracker_client.player_db.get_player_by_name(player_name)
             await ctx.send(f"Player {player_name} is already registered by {player.discord_id}.\nIf you think this is an error, please contact the administrator.")
@@ -137,7 +144,7 @@ def setup_commands(bot):
         else :
             async with bot.tracker_client.lock:
                 items = list(player.todolist)
-            msg = "```ansi\n Behold: the highly negotiated list of items your teammates absolutely needed\n\n"
+            msg = "```ansi\nBehold: the highly negotiated list of items your teammates absolutely needed\n\n"
             l1 = max(len(item.player_recieving.player_name) for item in items)
             l2 = max(len(item.item_name) for item in items) + 2
             l3 = max(len(item.location_name) for item in items) + 2

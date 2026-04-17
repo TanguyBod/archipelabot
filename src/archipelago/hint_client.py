@@ -1,6 +1,7 @@
 from archipelago.base_client import ArchipelagoClient
 from archipelago.tracker_client import TrackerClient
 from utils.colors import get_ansi_color_from_flag
+from models.item import Item
 import asyncio
 
 class HintClient(ArchipelagoClient) :
@@ -20,6 +21,7 @@ class HintClient(ArchipelagoClient) :
         self.finished_event = asyncio.Event()
         self.client_base = tracker_client
         self.hintpoints = 0
+        self.hint_found = False
     
     async def send_hint(self) :
         payload =   {
@@ -46,15 +48,17 @@ class HintClient(ArchipelagoClient) :
                         self.running = False # Running = False to stop workers
                         self.finished_event.set() # Signal that the hint has been processed to stop the client
                     if message["type"] == "Hint" :
-                        msg = await self.parse_hint(message["data"])
-                        await self.discord_bot_queue.put(msg)
+                        msg, item = await self.parse_hint(message["data"])
+                        await self.discord_bot_queue.put((msg, item))
+                        self.hint_found = True
                         self.running = False # Running = False to stop workers
                         self.finished_event.set() # Signal that the hint has been processed to stop the client
             except Exception as e:
                 print(f"Error processing message (HintClient {self.slot_name}): {e}")
                 continue
         
-    async def parse_hint(self, data : list[dict]) -> str :
+    async def parse_hint(self, data : list[dict]) -> tuple[str, Item] :
+        item = Item()
         msg_str = "```ansi\n"
         for chunk in data :
             if "type" not in chunk.keys() :
@@ -62,6 +66,10 @@ class HintClient(ArchipelagoClient) :
             elif chunk["type"] == "player_id" :
                 player_slot = int(chunk["text"])
                 player = self.client_base.player_db.get_player_by_slot(player_slot)
+                if item.player_recieving is None :
+                    item.player_recieving = player
+                else :
+                    item.player_sending = player
                 msg_str += f"{player.player_name}"
             elif chunk["type"] == "item_id" :
                 item_id = chunk["text"]
@@ -69,14 +77,18 @@ class HintClient(ArchipelagoClient) :
                 item_name = self.client_base.datapackage["data"]["games"][game]["id_to_item_name"][item_id]
                 color = await get_ansi_color_from_flag(chunk.get("flags", None))
                 msg_str += f"\u001b[0;{color}m{item_name}\u001b[0m"
+                item.item_id = item_id
+                item.item_name = item_name
             elif chunk["type"] == "location_id" :
                 location_id = chunk["text"]
                 game = self.client_base.player_db.get_player_by_slot(int(chunk["player"])).player_game
                 location_name = self.client_base.datapackage["data"]["games"][game]["id_to_location_name"][location_id]
                 msg_str += f"{location_name}"
+                item.location_id = location_id
+                item.location_name = location_name
             elif chunk["type"] == "hint_status" :
                 msg_str += chunk["text"]
             else :
                 print(f"Unknown chunk type in hint : {chunk['type']}")
         msg_str += "\nRemaining hint points : "+str(self.hintpoints)+"```"
-        return msg_str
+        return msg_str, item

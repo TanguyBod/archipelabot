@@ -55,8 +55,10 @@ class ArchipelagoClient(ABC) :
             try:
                 await self.connect()
                 if not self.workers_started:
+                    self.worker_tasks = []
                     for _ in range(self.nb_workers):
-                        asyncio.create_task(self.process_messages())
+                        task = asyncio.create_task(self.process_messages())
+                        self.worker_tasks.append(task)
                     self.workers_started = True
 
                 while self.running:
@@ -73,7 +75,10 @@ class ArchipelagoClient(ABC) :
                 
     async def stop(self) :
         self.running = False
-        if self.ap_connection is not None :
+        for task in getattr(self, "worker_tasks", []):
+            task.cancel()
+        await asyncio.gather(*self.worker_tasks, return_exceptions=True)
+        if self.ap_connection:
             await self.ap_connection.close()
     
     @abstractmethod
