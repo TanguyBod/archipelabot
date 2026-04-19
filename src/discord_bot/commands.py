@@ -160,7 +160,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             l3 = max(len(item.location_name) for item in items) + 2
             msg += f"{'For'.ljust(l1)} || {'Item'.ljust(l2)} || {'Location'.ljust(l3)}\n"
             for item in items :
-                msg += f"{item.player_recieving.player_name.ljust(l1)} || {item.item_name.ljust(l2)} || {item.location_name.ljust(l3)}"
+                msg += f"{item.player_recieving.player_name.ljust(l1)} || {item.item_name.ljust(l2)} || {item.location_name.ljust(l3)}\n"
                 if len(msg) > 1900 : # Discord message limit is 2000 characters, keep some margin
                     msg += "```"
                     await ctx.send(msg)

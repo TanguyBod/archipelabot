@@ -6,7 +6,7 @@ from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosedOK
 
 class ArchipelagoClient(ABC) :
-    version : dict[str, any] = {"major": 0, "minor": 6, "build": 0, "class": "Version"}
+    version : dict[str, any] = {"major": 0, "minor": 6, "build": 6, "class": "Version"}
     items_handling: int = 0b000 # Does not receive any items
     
     def __init__(self, config: dict[str, any]) :

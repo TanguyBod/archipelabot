@@ -16,6 +16,7 @@ class TrackerClient(ArchipelagoClient) :
         self.ap_connection = None
         self.player_db = PlayerDB(config["DatabaseConfig"]["data_directory"]+"/players.json")
         self.datapackage = None
+        self.datapackage_reversed = False 
         self.lock = asyncio.Lock() # Lock to protect shared resources
         self.workers_started = False
         self.messages_to_send = message_queue
@@ -26,7 +27,7 @@ class TrackerClient(ArchipelagoClient) :
         while self.running:
             try :
                 message = await self.message_queue.get()
-                print(message)
+                # print(message)
                 if message["cmd"] == "RoomInfo" :
                     # Check DataPackage and send connect
                     await self.check_data_package()
@@ -36,23 +37,26 @@ class TrackerClient(ArchipelagoClient) :
                     async with aiofiles.open(self.datapackage_path, "w", encoding="utf-8") as file:
                         await file.write(json.dumps(message, indent=2, ensure_ascii=False))
                     self.datapackage = message
-                if message["cmd"] == "Connected" :
-                    for slot, slot_info in message["slot_info"].items() :
-                        player_slot = int(slot)
-                        player_game = slot_info["game"]
-                        player_name = slot_info["name"]
-                        if player_game == "Archipelago" :
-                            continue
-                        print(f"Creating player {player_name} in slot {player_slot} playing {player_game}.")
-                        self.player_db.create_player(player_slot, player_game, player_name)
-                    # Reverse datapack now (otherwise games is an empty list)
                     await self.build_reverse_data_dict()
                     async with aiofiles.open(self.reversed_datapackage_path, "w", encoding="utf-8") as file:
                         await file.write(json.dumps(self.datapackage, indent=2, ensure_ascii=False))
+                    self.datapackage_reversed = True
+                if message["cmd"] == "Connected" :
+                    if self.player_db.loaded_from_file :
+                        print("PlayerDB loaded from file, skipping player creation from RoomInfo message.")
+                    else :
+                        for slot, slot_info in message["slot_info"].items() :
+                            player_slot = int(slot)
+                            player_game = slot_info["game"]
+                            player_name = slot_info["name"]
+                            if player_game == "Archipelago" :
+                                continue
+                            print(f"Creating player {player_name} in slot {player_slot} playing {player_game}.")
+                            self.player_db.create_player(player_slot, player_game, player_name)
                 if message["cmd"] == "PrintJSON" :
                     await self.process_json_message(message)
             except Exception as e :
-                print(f"Error processing message: {e}")
+                print(f"Error processing message: {e} -->\n {message}")
                 continue
 
     async def process_json_message(self, message: dict) -> None :
@@ -71,6 +75,7 @@ class TrackerClient(ArchipelagoClient) :
                 elif "type" not in data.keys():
                     msg_str += data["text"]
                 elif data["type"] == "player_id" :
+                    print(f"--------Parsing player_id --------")
                     player_slot = int(data["text"])
                     player_sending = self.player_db.get_player_by_slot(player_slot)
                     msg_str += f"{player_sending.player_name}"
@@ -127,6 +132,7 @@ class TrackerClient(ArchipelagoClient) :
     async def check_data_package(self) -> None :
         print("-- Checking DataPackage.")
         if os.path.exists(self.reversed_datapackage_path) :
+            self.datapackage_reversed = True
             async with aiofiles.open(self.reversed_datapackage_path, "r") as f:
                 self.datapackage = json.loads(await f.read())
             return
@@ -141,7 +147,7 @@ class TrackerClient(ArchipelagoClient) :
         Reverse item_name_to_id and location_name_to_id to id_to_item_name
         and id_to_location_name.
         """
-        
+        print("-- Building reverse datapackage.")
         if self.datapackage is None :
             raise ValueError(f"Trying to reverse datapackage but it is empty")
         reverse = {"cmd": "DataPackage", "data" : {"games" : {}}}

@@ -9,8 +9,10 @@ class PlayerDB :
         self.players_by_slot: dict[int, Player] = {}
         self.players_by_name: dict[str, Player] = {}
         self.players_by_discord: dict[int, Player] = {}
+        self.loaded_from_file = False
         if file_path is not None and os.path.exists(file_path) :
             self.load_db(file_path)
+            self.loaded_from_file = True
             print(f"PlayerDB initialized with {len(self.players_by_name)} players from {file_path}.")
         else :  
             print("PlayerDB initialized empty.")
