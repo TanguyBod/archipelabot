@@ -75,7 +75,6 @@ class TrackerClient(ArchipelagoClient) :
                 elif "type" not in data.keys():
                     msg_str += data["text"]
                 elif data["type"] == "player_id" :
-                    print(f"--------Parsing player_id --------")
                     player_slot = int(data["text"])
                     player_sending = self.player_db.get_player_by_slot(player_slot)
                     msg_str += f"{player_sending.player_name}"

@@ -74,5 +74,12 @@ class PlayerDB :
                     self.players_by_name[player.player_name] = player
                     if player.discord_id is not None:
                         self.players_by_discord[player.discord_id] = player
+                # Once all players are loaded, we can resolve the player references in the items
+                for player in self.players_by_name.values():
+                    for item in player.new_items + player.todolist:
+                        if item.player_sending is not None:
+                            item.player_sending = self.get_player_by_name(item.player_sending)
+                        if item.player_recieving is not None:
+                            item.player_recieving = self.get_player_by_name(item.player_recieving)
         except FileNotFoundError:
             print(f"No existing database found at {file_path}. Starting with an empty database.")

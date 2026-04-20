@@ -48,7 +48,8 @@ class Item:
             game=data.get("game"),
             location_name=data.get("location_name"),
             location_id=data.get("location_id"),
-            flag=data.get("flag")
+            flag=data.get("flag"),
+            player_recieving=data.get("player_recieving"), # Is currently the player name, will be resolved later when we have access to the PlayerDB
+            player_sending=data.get("player_sending") # Same here
         )
-        # player_sending and player_recieving will be set later when we have access to the PlayerDB
         return item

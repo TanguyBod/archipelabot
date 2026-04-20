@@ -18,10 +18,17 @@ class Button(discord.ui.View):
             # Add the item to the player's todolist
             print("Looking for player sending the item : "+self.item.player_sending.player_name)
             player_sending = self.tracker_client.player_db.get_player_by_name(self.item.player_sending.player_name)
+            # Check if the item is already in the player's todolist to avoid duplicates
+            for item in player_sending.todolist:
+                if item.item_name == self.item.item_name and item.location_name == self.item.location_name:
+                    await interaction.response.send_message(
+                        f"{self.item.item_name} is already in {player_sending.player_name}'s todolist!", ephemeral=True
+                    )
+                    return
             print(f"Adding item {self.item.item_name} to todolist of player {player_sending.player_name}")
             player_sending.todolist.append(self.item)
             await interaction.response.send_message(
-                f"Added {self.item.item_name} to todolist!", ephemeral=True
+                f"Added {self.item.item_name} to {player_sending.player_name}'s todolist!", ephemeral=True
             )
 
         else:

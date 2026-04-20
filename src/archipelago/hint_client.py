@@ -49,6 +49,7 @@ class HintClient(ArchipelagoClient) :
                         self.finished_event.set() # Signal that the hint has been processed to stop the client
                     if message["type"] == "Hint" :
                         msg, item = await self.parse_hint(message["data"])
+                        print(f"Parsed hint : {msg} with item : {item.__str__()}")
                         await self.discord_bot_queue.put((msg, item))
                         self.hint_found = True
                         self.running = False # Running = False to stop workers

@@ -7,7 +7,7 @@ import asyncio
 def setup_commands(bot):
     
     @bot.command()
-    async def hint(ctx, hint: str):
+    async def hint(ctx, *, hint: str):
         player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
@@ -143,6 +143,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def todo(ctx) :
+        print("todo command called")
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -151,15 +152,22 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             flavor = get_empty_todolist_flavor()
             await ctx.send(flavor)
         else :
+            print(f"Player found : {player.player_name} with {len(player.todolist)} items in todo list.")
             async with bot.tracker_client.lock:
                 items = list(player.todolist)
+            print(f"Items : {items}")
             flavor = get_todolist_flavor()
             msg = f"```ansi\n{flavor}\n\n"
+            print(items[0].__str__())
             l1 = max(len(item.player_recieving.player_name) for item in items)
+            print(f"l1 : {l1}")
             l2 = max(len(item.item_name) for item in items) + 2
+            print(f"l2 : {l2}")
             l3 = max(len(item.location_name) for item in items) + 2
+            print(f"l3 : {l3}")
             msg += f"{'For'.ljust(l1)} || {'Item'.ljust(l2)} || {'Location'.ljust(l3)}\n"
             for item in items :
+                print(f"Item : {item} added")
                 msg += f"{item.player_recieving.player_name.ljust(l1)} || {item.item_name.ljust(l2)} || {item.location_name.ljust(l3)}\n"
                 if len(msg) > 1900 : # Discord message limit is 2000 characters, keep some margin
                     msg += "```"
@@ -179,4 +187,53 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             async with bot.tracker_client.lock:
                 player.todolist.clear()
             msg = get_clear_todolist_flavor()
+            await ctx.send(msg)
+
+    @bot.command()
+    async def help(ctx, command: str = None) :
+        if command is None :
+            msg = """**Available commands:**\n
+`!register <player_name>` : Register your discord account to a player. You will receive notifications about this player's items and you can use other commands to see the player's todo list and new items.\n
+`!unregister <Optional : player_name>` : Unregister your discord account from a player. If player_name is not provided, it will unregister from the player you are currently registered to. If player_name is provided, it will unregister from that player if you are registered to it.\n
+`!players` : List all players in the tracker.\n
+`!hint <hint>` : Send a hint to the tracker. The hint will be processed and you'll be able to add the item to the sender's todo list.\n
+`!new` : Check for new items received since the last time you checked. The items will be sent to you in a DM to avoid spamming the channel.\n
+`!enableping` : Allow the bot to ping you when (i.e. in a todolist) an item you wanted is sent by another player.\n
+`!disableping` : Disallow the bot to ping you when an item you wanted (i.e. in a todolist) is sent by another player.\n
+`!todo` : Show your current todo list.\n
+`!clear_todo` : Clear your current todo list.\n
+`!help <command>` : Show this message or, if a command is provided, show detailed information about that command.
+"""
+            await ctx.send(msg)
+        else :
+            command = command.lower()
+            if command == "register" :
+                msg = """`!register <player_name>` : Register your discord account to a player. You will receive notifications about this player's items and you can use other commands to see the player's todo list and new items.\n
+Example : `!register Alice` will register you to the player named Alice. You can only be registered to one player at a time. If you want to register to another player, you need to unregister first using `!unregister` command."""
+            elif command == "unregister" :
+                msg = """`!unregister <Optional : player_name>` : Unregister your discord account from a player. If player_name is not provided, it will unregister from the player you are currently registered to. If player_name is provided, it will unregister from that player if you are registered to it.\n
+Example : `!unregister` will unregister you from the player you are currently registered to. `!unregister Alice` will unregister you from the player named Alice if you are registered to it."""
+            elif command == "players" :
+                msg = """`!players` : List all players in the tracker.\n
+Example : `!players` will list all players in the tracker. This command is useful to know the exact spelling of the player names to use them in other commands."""
+            elif command == "hint" :
+                msg = """`!hint <hint>` : Send a hint to the tracker. The hint will be processed and you'll be able to add the item to the sender's todo list.\n
+Example : `!hint I found a red chest in the forest` will send the hint "I found a red chest in the forest" to the tracker. If the hint is recognized as an item, you will receive a message with the item name and a button to add it to the sender's todo list."""
+            elif command == "new" :
+                msg = """`!new` : Check for new items received since the last time you checked. The items will be sent to you in a DM to avoid spamming the channel.\n
+Example : `!new` will check for new items received since the last time you checked and send them to you in a DM."""
+            elif command == "enableping" :
+                msg = """`!enableping` : Allow the bot to ping you when (i.e. in a todolist) an item you wanted is sent by another player.\n
+Example : `!enableping` will allow the bot to ping you when an item you wanted is sent by another player."""
+            elif command == "disableping" :
+                msg = """`!disableping` : Disallow the bot to ping you when an item you wanted (i.e. in a todolist) is sent by another player.\n
+Example : `!disableping` will disallow the bot to ping you when an item you wanted is sent by another player."""
+            elif command == "todo" :
+                msg = """`!todo` : Show your current todo list.\n
+Example : `!todo` will show your current todo list. The todo list contains items that you wanted and that other players have sent to you. If the todo list is empty, it will show a message saying that your todo list is empty."""
+            elif command == "clear_todo" :
+                msg = """`!clear_todo` : Clear your current todo list.\n
+Example : `!clear_todo` will clear your current todo list. Use this command when you have received the items in your todo list and want to clear it."""
+            else :
+                msg = f"Command {command} not found. Use `!help` command to see the list of available commands."
             await ctx.send(msg)
