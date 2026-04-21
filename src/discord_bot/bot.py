@@ -8,7 +8,7 @@ def create_bot(tracker_client, message_queue, config, logger):
     intents.message_content = True
     intents.reactions = True
 
-    bot = commands.Bot(command_prefix="§", intents=intents)
+    bot = commands.Bot(command_prefix="!", intents=intents)
     bot.logger = logger
     bot.tracker_client = tracker_client
     bot.messages_to_send = message_queue
