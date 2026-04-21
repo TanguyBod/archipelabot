@@ -137,8 +137,7 @@ class TrackerClient(ArchipelagoClient) :
             player_recieving = player_recieving,
             flag = flag
         )
-        return item
-        
+        return item 
 
     async def remove_item_from_todolist(self, item: Item) -> bool :
         player_sending = self.player_db.get_player_by_name(item.player_sending.player_name)
