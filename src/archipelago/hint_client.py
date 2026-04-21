@@ -74,7 +74,7 @@ class HintClient(ArchipelagoClient) :
                     item.player_recieving = player
                 else :
                     item.player_sending = player
-                msg_str += f"{player.player_name}"
+                msg_str += f"{player.name_colored}"
             elif chunk["type"] == "item_id" :
                 item_id = chunk["text"]
                 game = self.client_base.player_db.get_player_by_slot(int(chunk["player"])).player_game
