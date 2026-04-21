@@ -149,7 +149,7 @@ class TrackerClient(ArchipelagoClient) :
                 sending_str = item.player_sending.player_name
                 recieving_str = f"<@{item.player_recieving.discord_id}>" if item.player_recieving.allow_ping and item.player_recieving.discord_id is not None else item.player_recieving.player_name
                 msg_flavor = get_fulfilled_wish_flavor(sending_str, recieving_str, item.item_name, item.location_name)
-                await self.messages_to_send.put(msg_flavor)
+                await self.ping_queue.put(msg_flavor)
                 return True
         self.logger.info(f"Item {item.item_name} not found in {item.player_sending.player_name} todolist, not removed.")
         return False
