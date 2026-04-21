@@ -3,6 +3,15 @@ from models.button import Button
 from utils.colors import get_ansi_color_from_flag
 from discord_bot.texts_flavors import get_clear_todolist_flavor, get_todolist_flavor, get_empty_todolist_flavor
 import asyncio
+import re
+
+ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
+
+def strip_ansi(s):
+    return ANSI_ESCAPE.sub('', s)
+
+def ansi_ljust(s, width):
+    return s + " " * (width - len(strip_ansi(s)))
 
 def setup_commands(bot):
     
@@ -114,10 +123,10 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             l2 = max(len("Item"), max(len(item.item_name) for item in items)) + 2
             l3 = max(len("Sender"), max(len(item.player_sending.player_name) for item in items)) + 2
             l4 = max(len("Location"), max(len(item.location_name) for item in items)) + 2
-            msg += f"{'You'.ljust(l1 - 2)} || {'Item'.ljust(l2)} || {'Sender'.ljust(l3)} || {'Location'.ljust(l4)}\n"
+            msg += f"{'You'.ljust(l1)} || {'Item'.ljust(l2)} || {'Sender'.ljust(l3)} || {'Location'.ljust(l4)}\n"
             for item in items :
                 color = await get_ansi_color_from_flag(item.flag)
-                msg += f"{player.name_colored.ljust(l1)} || \u001b[0;{color}m{item.item_name.ljust(l2)}\u001b[0m || {item.player_sending.name_colored.ljust(l3)} || {item.location_name.ljust(l4)}\n"
+                msg += f"{ansi_ljust(player.name_colored, l1)} || \u001b[0;{color}m{item.item_name.ljust(l2)}\u001b[0m || {ansi_ljust(item.player_sending.name_colored, l3)} || {item.location_name.ljust(l4)}\n"
                 if len(msg) > 1500 : # Discord message limit is 2000 characters, keep some margin
                     msg += "```"
                     await user.dm_channel.send(msg)
