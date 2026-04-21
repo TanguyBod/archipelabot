@@ -8,6 +8,7 @@ def setup_commands(bot):
     
     @bot.command()
     async def hint(ctx, *, hint: str):
+        bot.logger.info(f"Hint command called with hint : {hint}")
         player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
@@ -34,7 +35,7 @@ def setup_commands(bot):
                 # Terminate hint client
                 await hint_client_instance.stop()
             except Exception as e :
-                print(f"Error sending hint: {e}")
+                bot.logger.error(f"Error sending hint: {e}")
                 await ctx.send(f"An error occurred while sending the hint. Please try again later.")
 
     @bot.command()
@@ -92,7 +93,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
         elif len(player.new_items) == 0 :
-            print(f"Player found : {player.player_name} but no new items to send.")
+            bot.logger.debug(f"Player found : {player.player_name} but no new items to send.")
             # DM player if no new items, to avoid spamming the channel
             # Check if bot can DM the user
             if user.dm_channel is None :
@@ -101,7 +102,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         else :
             if user.dm_channel is None :
                 await user.create_dm()
-            print(f"Player found : {player.player_name} with {len(player.new_items)} new items to send.")
+            bot.logger.debug(f"Player found : {player.player_name} with {len(player.new_items)} new items to send.")
             msg = "```ansi\n"
             async with bot.tracker_client.lock:
                 items = list(player.new_items)
@@ -143,7 +144,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def todo(ctx) :
-        print("todo command called")
+        bot.logger.debug("todo command called")
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -152,22 +153,22 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             flavor = get_empty_todolist_flavor()
             await ctx.send(flavor)
         else :
-            print(f"Player found : {player.player_name} with {len(player.todolist)} items in todo list.")
+            bot.logger.info(f"Player found : {player.player_name} with {len(player.todolist)} items in todo list.")
             async with bot.tracker_client.lock:
                 items = list(player.todolist)
-            print(f"Items : {items}")
+            bot.logger.debug(f"Items : {items}")
             flavor = get_todolist_flavor()
             msg = f"```ansi\n{flavor}\n\n"
-            print(items[0].__str__())
+            bot.logger.debug(f"First item : {items[0].__str__()}")
             l1 = max(len(item.player_recieving.player_name) for item in items)
-            print(f"l1 : {l1}")
+            bot.logger.debug(f"l1 : {l1}")
             l2 = max(len(item.item_name) for item in items) + 2
-            print(f"l2 : {l2}")
+            bot.logger.debug(f"l2 : {l2}")
             l3 = max(len(item.location_name) for item in items) + 2
-            print(f"l3 : {l3}")
+            bot.logger.debug(f"l3 : {l3}")
             msg += f"{'For'.ljust(l1)} || {'Item'.ljust(l2)} || {'Location'.ljust(l3)}\n"
             for item in items :
-                print(f"Item : {item} added")
+                bot.logger.debug(f"Item : {item} added")
                 msg += f"{item.player_recieving.player_name.ljust(l1)} || {item.item_name.ljust(l2)} || {item.location_name.ljust(l3)}\n"
                 if len(msg) > 1900 : # Discord message limit is 2000 characters, keep some margin
                     msg += "```"

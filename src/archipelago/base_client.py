@@ -2,6 +2,7 @@ import asyncio
 from abc import ABC, abstractmethod
 import uuid
 import json
+import logging
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosedOK
 
@@ -9,7 +10,7 @@ class ArchipelagoClient(ABC) :
     version : dict[str, any] = {"major": 0, "minor": 6, "build": 6, "class": "Version"}
     items_handling: int = 0b000 # Does not receive any items
     
-    def __init__(self, config: dict[str, any]) :
+    def __init__(self, config: dict[str, any], logger: logging.Logger) :
         self.client_url : str = config["ArchipelagoConfig"]["client_url"]
         self.client_port : str = config["ArchipelagoConfig"]["client_port"]
         self.password : str = config["ArchipelagoConfig"]["password"]
@@ -24,6 +25,7 @@ class ArchipelagoClient(ABC) :
         self.workers_started = False
         self.game = ''
         self.worker_tasks = []
+        self.logger = logger
     
     async def connect(self) :
         self.ap_connection = await connect(

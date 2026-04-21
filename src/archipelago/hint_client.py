@@ -11,7 +11,7 @@ class HintClient(ArchipelagoClient) :
                  hint : str,
                  tracker_client : TrackerClient,
                  config) :
-        super().__init__(config)
+        super().__init__(config, logger=tracker_client.logger)
         self.game = player_game
         self.tags = set('TextOnly')
         self.slot_name : str = player_name
@@ -40,22 +40,22 @@ class HintClient(ArchipelagoClient) :
                     self.hintpoints = message["hint_points"]
                     await self.send_hint()
                 if message["cmd"] == "PrintJSON" :
-                    print(f"Processing message HintClient {self.slot_name} :\n{message}")
+                    self.logger.debug(f"Processing message HintClient {self.slot_name} :\n{message}")
                     if message["type"] == 'CommandResult' :
                         text = message["data"][0]["text"]
-                        print(f"Received hint result : {text}")
+                        self.logger.debug(f"Received hint result : {text}")
                         await self.discord_bot_queue.put(message["data"][0]["text"])
                         self.running = False # Running = False to stop workers
                         self.finished_event.set() # Signal that the hint has been processed to stop the client
                     if message["type"] == "Hint" :
                         msg, item = await self.parse_hint(message["data"])
-                        print(f"Parsed hint : {msg} with item : {item.__str__()}")
+                        self.logger.debug(f"Parsed hint : {msg} with item : {item.__str__()}")
                         await self.discord_bot_queue.put((msg, item))
                         self.hint_found = True
                         self.running = False # Running = False to stop workers
                         self.finished_event.set() # Signal that the hint has been processed to stop the client
             except Exception as e:
-                print(f"Error processing message (HintClient {self.slot_name}): {e}")
+                self.logger.error(f"Error processing message (HintClient {self.slot_name}): {e}")
                 continue
         
     async def parse_hint(self, data : list[dict]) -> tuple[str, Item] :
@@ -91,6 +91,6 @@ class HintClient(ArchipelagoClient) :
             elif chunk["type"] == "hint_status" :
                 msg_str += chunk["text"]
             else :
-                print(f"Unknown chunk type in hint : {chunk['type']}")
+                self.logger.warning(f"Unknown chunk type in hint : {chunk['type']}")
         msg_str += "\nRemaining hint points : "+str(self.hintpoints)+"```"
         return msg_str, item

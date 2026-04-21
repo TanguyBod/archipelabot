@@ -2,6 +2,7 @@ from archipelago.base_client import ArchipelagoClient
 from models.player_db import PlayerDB
 from models.item import Item
 from utils.colors import get_ansi_color_from_flag
+import logging
 import asyncio
 import aiofiles
 import json
@@ -9,8 +10,8 @@ import os
 
 
 class TrackerClient(ArchipelagoClient) :
-    def __init__(self, config: dict[str, any], message_queue: asyncio.Queue) :
-        super().__init__(config)
+    def __init__(self, config: dict[str, any], message_queue: asyncio.Queue, logger: logging.Logger) :
+        super().__init__(config, logger=logger)
         self.tags = set({'TextOnly', 'Tracker', 'DeathLink'})
         self.slot_name : str = config["ArchipelagoConfig"]["bot_slot"]
         self.ap_connection = None
@@ -27,7 +28,7 @@ class TrackerClient(ArchipelagoClient) :
         while self.running:
             try :
                 message = await self.message_queue.get()
-                # print(message)
+                self.logger.debug(f"Processing message: {message}")
                 if message["cmd"] == "RoomInfo" :
                     # Check DataPackage and send connect
                     await self.check_data_package()
@@ -43,7 +44,7 @@ class TrackerClient(ArchipelagoClient) :
                     self.datapackage_reversed = True
                 if message["cmd"] == "Connected" :
                     if self.player_db.loaded_from_file :
-                        print("PlayerDB loaded from file, skipping player creation from RoomInfo message.")
+                        self.logger.info("PlayerDB loaded from file, skipping player creation from RoomInfo message.")
                     else :
                         for slot, slot_info in message["slot_info"].items() :
                             player_slot = int(slot)
@@ -51,12 +52,12 @@ class TrackerClient(ArchipelagoClient) :
                             player_name = slot_info["name"]
                             if player_game == "Archipelago" :
                                 continue
-                            print(f"Creating player {player_name} in slot {player_slot} playing {player_game}.")
+                            self.logger.info(f"Creating player {player_name} in slot {player_slot} playing {player_game}.")
                             self.player_db.create_player(player_slot, player_game, player_name)
                 if message["cmd"] == "PrintJSON" :
                     await self.process_json_message(message)
             except Exception as e :
-                print(f"Error processing message: {e} -->\n {message}")
+                self.logger.error(f"Error processing message: {e} -->\n {message}")
                 continue
 
     async def process_json_message(self, message: dict) -> None :
@@ -69,6 +70,7 @@ class TrackerClient(ArchipelagoClient) :
         if message["type"] == "ItemSend" :
             msg_str = ""; flag = None; item_player = Item()
             msg_summary = []; player_recieving = None; player_sending = None
+            self.logger.debug(f"Processing ItemSend message : {message}")
             for data in message["data"] :
                 if data["text"].strip() in ["(", ")"] :
                     continue
@@ -103,18 +105,18 @@ class TrackerClient(ArchipelagoClient) :
                     item_player.location_name = location_name
                     item_player.location_id = location_id
                 else :
-                    print(f"Unknown data type : {data['type']}")
+                    self.logger.warning(f"Unknown data type : {data['type']}")
             if player_recieving is None :
                 raise ValueError(f"Player receiving item not found in message : {message}")
             if player_sending.player_slot != player_recieving.player_slot :
-                print(f"Item sent from {player_sending.player_name} added to player {player_recieving.player_name} new items list.")
+                self.logger.info(f"Item sent from {player_sending.player_name} added to player {player_recieving.player_name} new items list.")
                 async with self.lock:
                     player_recieving.new_items.append(item_player)
             await self.remove_item_from_todolist(item_player)
             msg_str = "```ansi\n"+ msg_str +"\n```"
             await self.messages_to_send.put(msg_str)
         else :
-            print(f"Unknown message type : {message['type']}")
+            self.logger.warning(f"Unknown message type : {message['type']}")
 
     async def remove_item_from_todolist(self, item: Item) -> bool :
         player_sending = self.player_db.get_player_by_name(item.player_sending.player_name)
@@ -129,7 +131,7 @@ class TrackerClient(ArchipelagoClient) :
         return False
 
     async def check_data_package(self) -> None :
-        print("-- Checking DataPackage.")
+        self.logger.info("-- Checking DataPackage.")
         if os.path.exists(self.reversed_datapackage_path) :
             self.datapackage_reversed = True
             async with aiofiles.open(self.reversed_datapackage_path, "r") as f:
@@ -146,7 +148,7 @@ class TrackerClient(ArchipelagoClient) :
         Reverse item_name_to_id and location_name_to_id to id_to_item_name
         and id_to_location_name.
         """
-        print("-- Building reverse datapackage.")
+        self.logger.info("-- Building reverse datapackage.")
         if self.datapackage is None :
             raise ValueError(f"Trying to reverse datapackage but it is empty")
         reverse = {"cmd": "DataPackage", "data" : {"games" : {}}}
