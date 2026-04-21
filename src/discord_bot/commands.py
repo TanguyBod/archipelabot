@@ -112,8 +112,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                 player.new_items.clear()
             l1 = max(len("You"), len(player.player_name)) + 2
             l2 = max(len("Item"), max(len(item.item_name) for item in items)) + 2
-            l3 = max(len("Sender"), len(item.player_sending.player_name)) + 2
-            l4 = max(len("Location"), len(item.location_name)) + 2
+            l3 = max(len("Sender"), max(len(item.player_sending.player_name) for item in items)) + 2
+            l4 = max(len("Location"), max(len(item.location_name) for item in items)) + 2
             msg += f"{'You'.ljust(l1)} || {'Item'.ljust(l2)} || {'Sender'.ljust(l3)} || {'Location'.ljust(l4)}\n"
             for item in items :
                 color = await get_ansi_color_from_flag(item.flag)
@@ -161,7 +161,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                 items = list(player.todolist)
             flavor = get_todolist_flavor()
             msg = f"```ansi\n{flavor}\n\n"
-            l1_tmp = max(max(len(item.player_recieving.player_name) for item in items), len("For")) + 1
+            l1_tmp = max(max(len(item.player_recieving.player_name) for item in items), len("For")) + 2
             l1 = max(max(len(item.player_recieving.name_colored) for item in items), len("For")) + 2
             l2 = max(max(len(item.item_name) for item in items), len("Item")) + 2
             l3 = max(max(len(item.location_name) for item in items), len("Location")) + 2
@@ -187,6 +187,25 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                 player.todolist.clear()
             msg = get_clear_todolist_flavor()
             await ctx.send(msg)
+            
+    @bot.command()
+    async def remove_todo(ctx, *, item_name: str) :
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            async with bot.tracker_client.lock:
+                item_to_remove = None
+                for item in player.todolist :
+                    if item.item_name.lower() == item_name.lower() :
+                        item_to_remove = item
+                        break
+                if item_to_remove is None :
+                    await ctx.send(f"Item {item_name} not found in your todo list.")
+                else :
+                    player.todolist.remove(item_to_remove)
+                    await ctx.send(f"Item {item_name} removed from your todo list.")
 
     @bot.command()
     async def help(ctx, command: str = None) :
