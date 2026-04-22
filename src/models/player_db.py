@@ -31,6 +31,9 @@ class PlayerDB :
         if discord_id is not None:
             self.players_by_discord[discord_id] = player
         return player
+    
+    def get_all_players(self) -> list[Player] :
+        return list(self.players_by_name.values())
 
     def get_player_by_slot(self, player_slot : int) -> Player :
         return self.players_by_slot.get(player_slot)

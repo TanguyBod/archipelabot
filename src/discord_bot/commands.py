@@ -222,7 +222,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         wishlist = []
-        for other_player in bot.tracker_client.player_db.get_all_players():
+        for other_player in bot.tracker_client.player_db.get_all_players() :
             if other_player.player_name == player.player_name :
                 continue
             async with bot.tracker_client.lock:
