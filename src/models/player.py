@@ -22,6 +22,7 @@ class Player:
         self.allow_ping = True
         self.color = PLAYER_COLORS[int(player_slot) % len(PLAYER_COLORS)]
         self.name_colored = f"{self.color}{self.player_name}\u001b[0m"
+        self.time_played = 0 #in seconds
 
     def save(self):
         return {
@@ -31,7 +32,8 @@ class Player:
             "discord_id": self.discord_id,
             "new_items": [item.save() for item in self.new_items],
             "todolist": [item.save() for item in self.todolist],
-            "allow_ping": self.allow_ping
+            "allow_ping": self.allow_ping,
+            "time_played": self.time_played
         }
     
     def load(data):
@@ -46,4 +48,5 @@ class Player:
         player.new_items = [Item.load(item_data) for item_data in data.get("new_items", [])]
         player.todolist = [Item.load(item_data) for item_data in data.get("todolist", [])]
         player.allow_ping = data.get("allow_ping", True)
+        player.time_played = data.get("time_played", 0)
         return player

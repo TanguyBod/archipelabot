@@ -112,7 +112,7 @@ class TrackerClient(ArchipelagoClient) :
             await self.remove_item_from_todolist(item_sent)
             await self.messages_to_send.put(msg_str)
         else :
-            self.logger.warning(f"Unknown message type : {message['type']}")
+            self.logger.warning(f"Unknown message type : {message['type']} --> \n {message}")
 
     async def process_item_send(self, receiving_field: str, item_field: dict) -> Item :
         player_recieving = self.player_db.get_player_by_slot(int(receiving_field))
