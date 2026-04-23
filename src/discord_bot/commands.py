@@ -288,6 +288,21 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                     msg = "```ansi\n"
             msg += "```"
             await ctx.send(msg)
+            
+    @bot.command()
+    async def wastedOnArchipelago(ctx) :
+        if await bad_channel_check(ctx):
+            return
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            time_played = player.time_played
+            hours = int(time_played // 3600)
+            minutes = int((time_played % 3600) // 60)
+            seconds = int(time_played % 60)
+            await ctx.send(f"You have wasted {hours} hours, {minutes} minutes and {seconds} seconds in this Archipelago Multiworld.")
                 
 
     @bot.command()
