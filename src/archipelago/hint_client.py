@@ -13,7 +13,7 @@ class HintClient(ArchipelagoClient) :
                  config) :
         super().__init__(config, logger=tracker_client.logger)
         self.game = player_game
-        self.tags = set('TextOnly')
+        self.tags = set(['TextOnly'])
         self.slot_name : str = player_name
         self.ap_connection = None
         self.discord_bot_queue = asyncio.Queue(maxsize=2000)

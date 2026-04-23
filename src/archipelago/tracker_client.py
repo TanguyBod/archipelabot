@@ -3,6 +3,7 @@ from models.player_db import PlayerDB
 from models.item import Item
 from utils.colors import get_ansi_color_from_flag
 from discord_bot.texts_flavors import get_fulfilled_wish_flavor
+import time
 import logging
 import asyncio
 import aiofiles
@@ -71,7 +72,7 @@ class TrackerClient(ArchipelagoClient) :
                 if "!hint" in data["text"] :
                     continue
                 await self.messages_to_send.put(data['text'])
-        if message["type"] == "ItemSend" :
+        elif message["type"] == "ItemSend" :
             msg_str = ""
             for data in message["data"] :
                 if data["text"].strip() in ["(", ")"] :
@@ -111,6 +112,34 @@ class TrackerClient(ArchipelagoClient) :
                     item_sent.player_recieving.new_items.append(item_sent)
             await self.remove_item_from_todolist(item_sent)
             await self.messages_to_send.put(msg_str)
+            
+        elif message["type"] == "Join" :
+            if message["tags"] == ["TextOnly"] :
+                self.logger.info(f"Received Join message from TextOnly client, ignoring it for player count : {message['slot']}")
+                return # Ignore Join messages from TextOnly clients, count only when playing
+            player_slot = int(message["slot"])
+            player = self.player_db.get_player_by_slot(player_slot)
+            if player is None :
+                self.logger.warning(f"Player in slot {player_slot} not found in player_db, cannot process Join message.")
+                return
+            player.is_playing = True
+            player.time_joined = time.time()
+        elif message["type"] == "Part" :
+            if message["tags"] == ["TextOnly"] :
+                self.logger.info(f"Received Part message from TextOnly client, ignoring it for player count : {message['slot']}")
+                return # Ignore Part messages from TextOnly clients, count only when playing
+            player_slot = int(message["slot"])
+            player = self.player_db.get_player_by_slot(player_slot)
+            if player is None :
+                self.logger.warning(f"Player in slot {player_slot} not found in player_db, cannot process Part message.")
+                return
+            if player.is_playing :
+                player.is_playing = False
+                time_played = time.time() - player.time_joined
+                player.time_played += time_played
+                self.logger.info(f"Player {player.player_name} in slot {player_slot} played for {time_played:.2f} seconds, total time played : {player.time_played:.2f} seconds.")
+            else :
+                self.logger.warning(f"Received Part message for player {player.player_name} in slot {player_slot} but player was not marked as playing.")
         else :
             self.logger.warning(f"Unknown message type : {message['type']} --> \n {message}")
 
