@@ -124,8 +124,9 @@ class TrackerClient(ArchipelagoClient) :
                 return
             player.is_playing = True
             player.time_joined = time.time()
+            self.logger.info(f"Player {player.player_name} in slot {player_slot} started playing, timer started.")
         elif message["type"] == "Part" :
-            if ['TextOnly'] in message["data"][0] :
+            if ['TextOnly'] in message["data"][0]["text"] :
                 self.logger.info(f"Received Part message from TextOnly client, ignoring it for player count : {message['slot']}")
                 return # Ignore Part messages from TextOnly clients, count only when playing
             player_slot = int(message["slot"])
