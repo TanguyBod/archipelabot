@@ -38,7 +38,8 @@ class Player:
             "time_played": self.time_played
         }
     
-    def load(self, data : dict) -> 'Player' :
+    @staticmethod
+    def load(data : dict) -> 'Player' :
         player = Player(
             player_slot=data["player_slot"],
             player_game=data["player_game"],

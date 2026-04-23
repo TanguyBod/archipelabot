@@ -13,10 +13,32 @@ def strip_ansi(s):
 def ansi_ljust(s, width):
     return s + " " * (width - len(strip_ansi(s)))
 
+async def bad_channel_check(ctx) :
+    if ctx.channel is not None and ctx.channel.id != 1487828069510021253 :
+        await ctx.send("""Cher Monsieur, Chère Madame, nous vous prions de bien vouloir apprendre à lire
+Voilà quelque-chose, mon cher, que vous auriez pu faire,
+Si vous aviez un peu de lettres et d’esprit
+Mais d’esprit, ô le plus lamentable des êtres,
+Vous n’en eûtes jamais un atome, et de lettres
+Vous n’avez que les trois qui forment le mot : sot !
+Eussiez-vous eu d’ailleurs la présence d’esprit qu’il faut,
+Pour pouvoir là, devant ces deux pauvres channels discord,
+vous servir du bon et susnommé « channel à bot »,
+Que vous n’en eussiez pas tapé le quart
+De la moitié du commencement de votre commande, 
+Que nous vous la renvoyons, avec assez de verve,
+Et ne permettons pas qu’une commande entacha ce chanel tout propre. 
+
+Arthur et Tanguy""")
+        return True
+    return False
+
 def setup_commands(bot):
     
     @bot.command()
     async def hint(ctx, *, hint: str):
+        if await bad_channel_check(ctx):
+            return
         bot.logger.info(f"Hint command called with hint : {hint}")
         player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
         if player is None :
@@ -52,11 +74,15 @@ def setup_commands(bot):
 
     @bot.command()
     async def players(ctx):
+        if await bad_channel_check(ctx):
+            return
         players = bot.tracker_client.player_db.get_all_players_names()
         await ctx.send("test")
 
     @bot.command()
     async def register(ctx, player_name: str) :
+        if await bad_channel_check(ctx):
+            return
         # Check if player name is valid
         if player_name not in bot.tracker_client.player_db.get_all_players_names() :
             await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
@@ -76,6 +102,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def unregister(ctx, player_name: str = None) :
+        if await bad_channel_check(ctx):
+            return
         # Check if player name is valid
         if not player_name :
             player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
@@ -99,6 +127,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def new(ctx) :
+        if await bad_channel_check(ctx):
+            return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         user = await bot.fetch_user(discord_id)
@@ -136,6 +166,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             
     @bot.command()
     async def enableping(ctx) :
+        if await bad_channel_check(ctx):
+            return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -146,6 +178,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
     
     @bot.command()
     async def disableping(ctx) :
+        if await bad_channel_check(ctx):
+            return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -156,6 +190,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def todo(ctx) :
+        if await bad_channel_check(ctx):
+            return
         bot.logger.info("todo command called")
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -186,6 +222,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         
     @bot.command()
     async def clear_todo(ctx) :
+        if await bad_channel_check(ctx):
+            return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -198,6 +236,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             
     @bot.command()
     async def remove_todo(ctx, *, item_name: str) :
+        if await bad_channel_check(ctx):
+            return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -217,6 +257,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                     
     @bot.command()
     async def wishlist(ctx) :
+        if await bad_channel_check(ctx):
+            return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
@@ -250,6 +292,8 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def help(ctx, command: str = None) :
+        if await bad_channel_check(ctx):
+            return
         if command is None :
             msg = """**Available commands:**\n
 `!register <player_name>` : Register your discord account to a player. You will receive notifications about this player's items and you can use other commands to see the player's todo list and new items.\n
@@ -296,3 +340,6 @@ Example : `!clear_todo` will clear your current todo list. Use this command when
             else :
                 msg = f"Command {command} not found. Use `!help` command to see the list of available commands."
             await ctx.send(msg)
+            
+            
+    
