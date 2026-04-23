@@ -41,7 +41,8 @@ class Item:
             "flag": self.flag
         }
     
-    def load(self, data: dict):
+    @staticmethod   
+    def load(data: dict) -> 'Item' :
         item = Item(
             item_name=data.get("item_name"),
             item_id=data.get("item_id"),
