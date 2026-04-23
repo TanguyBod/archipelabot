@@ -1,4 +1,4 @@
-# Archipelabot
+# ArchiLink
 A Discord bot designed to interact with an **Archipelago Multiworld** session directly from your server.
 It allows players to track progress, request hints, and collaborate more efficiently without leaving Discord.
 Its main features are the following :
@@ -20,7 +20,7 @@ Before hosting a discord bot for your server, you'll have to create one : [refer
 #### Clone the project and install dependencies
 
 ```bash
-git clone https://github.com/TanguyBod/archipelabot.git
+git clone https://github.com/TanguyBod/ArchiLink.git
 ```
 
 It is recommended to create a virtual environment before installing the dependencies :
