@@ -41,7 +41,7 @@ class Item:
             "flag": self.flag
         }
     
-    def load(data):
+    def load(self, data: dict):
         item = Item(
             item_name=data.get("item_name"),
             item_id=data.get("item_id"),
