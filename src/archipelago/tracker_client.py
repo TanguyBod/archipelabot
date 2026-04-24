@@ -12,7 +12,7 @@ import os
 
 
 class TrackerClient(ArchipelagoClient) :
-    def __init__(self, config: dict[str, any], message_queue: asyncio.Queue, ping_queue: asyncio.Queue, logger: logging.Logger) :
+    def __init__(self, config: dict[str, any], message_queue: asyncio.Queue, ping_queue: asyncio.Queue, dm_queue: asyncio.Queue, logger: logging.Logger) :
         super().__init__(config, logger=logger)
         # Make sure data directory exists
         os.makedirs(config["DatabaseConfig"]["data_directory"], exist_ok=True)
@@ -26,6 +26,7 @@ class TrackerClient(ArchipelagoClient) :
         self.workers_started = False
         self.messages_to_send = message_queue
         self.ping_queue = ping_queue
+        self.dm_queue = dm_queue
         self.datapackage_path = os.path.join(config["DatabaseConfig"]["data_directory"], "datapackage.json")
         self.reversed_datapackage_path = os.path.join(config["DatabaseConfig"]["data_directory"], "reversed_datapackage.json")
     
@@ -125,6 +126,10 @@ class TrackerClient(ArchipelagoClient) :
             player.is_playing = True
             player.time_joined = time.time()
             self.logger.info(f"Player {player.player_name} in slot {player_slot} started playing, timer started.")
+            # If player has new items and get_new_items_auto is enabled, send a message to ping the player about their new items
+            if player.new_items and player.get_new_items_auto :
+                await self.dm_queue.put((player, "new_items"))
+            
         elif message["type"] == "Part" :
             if "['TextOnly']" in message["data"][0]["text"] :
                 self.logger.info(f"Received Part message from TextOnly client, ignoring it for player count : {message['slot']}")

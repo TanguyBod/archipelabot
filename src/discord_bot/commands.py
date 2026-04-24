@@ -13,8 +13,8 @@ def strip_ansi(s):
 def ansi_ljust(s, width):
     return s + " " * (width - len(strip_ansi(s)))
 
-async def bad_channel_check(ctx) :
-    if ctx.channel is not None and ctx.channel.id != 1487828069510021253 :
+async def bad_channel_check(ctx, bot) :
+    if ctx.channel is not None and ctx.channel.id != bot.normal_channel_id :
         await ctx.send("""Cher Monsieur, Chère Madame, nous vous prions de bien vouloir apprendre à lire
 Voilà quelque-chose, mon cher, que vous auriez pu faire,
 Si vous aviez un peu de lettres et d’esprit
@@ -33,11 +33,47 @@ Arthur et Tanguy""")
         return True
     return False
 
+async def send_new_items(bot, player_id) :
+    player = bot.tracker_client.player_db.get_player_by_discord_id(player_id)
+    user = await bot.fetch_user(player_id)
+    if user.dm_channel is None :
+        await user.create_dm() 
+    if player is None :
+        bot.logger.error(f"Player with discord id {player_id} not found.")
+        return
+    elif len(player.new_items) == 0 :
+        bot.logger.info(f"Player found : {player.player_name} but no new items to send.")
+        # DM player if no new items, to avoid spamming the channel
+        await user.dm_channel.send("You have not received any new items since the last time you checked.")
+    else :
+        bot.logger.info(f"Player found : {player.player_name} with {len(player.new_items)} new items to send.")
+        msg = "```ansi\n"
+        async with bot.tracker_client.lock:
+            items = list(player.new_items)
+            player.new_items.clear()
+        l1 = max(len("You"), len(player.player_name)) + 1
+        l2 = max(len("Item"), max(len(item.item_name) for item in items)) + 1
+        l3 = max(len("Sender"), max(len(item.player_sending.player_name) for item in items)) + 1
+        l4 = max(len("Location"), max(len(item.location_name) for item in items)) + 1
+        msg += f"{'You'.ljust(l1)} || {'Item'.ljust(l2)} || {'Sender'.ljust(l3)} || {'Location'.ljust(l4)}\n"
+        for item in items :
+            color = await get_ansi_color_from_flag(item.flag)
+            msg += f"{ansi_ljust(player.name_colored, l1)} || \u001b[0;{color}m{item.item_name.ljust(l2)}\u001b[0m || {ansi_ljust(item.player_sending.name_colored, l3)} || {item.location_name.ljust(l4)}\n"
+            if len(msg) > 1500 : # Discord message limit is 2000 characters, keep some margin
+                msg += "```"
+                await user.dm_channel.send(msg)
+                msg = "```ansi\n"
+        msg += "```"
+        if msg == f"```ansi\n```" :
+            return
+        await user.dm_channel.send(msg)
+
+
 def setup_commands(bot):
     
     @bot.command()
     async def hint(ctx, *, hint: str):
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         bot.logger.info(f"Hint command called with hint : {hint}")
         player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
@@ -74,14 +110,14 @@ def setup_commands(bot):
 
     @bot.command()
     async def players(ctx):
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         players = bot.tracker_client.player_db.get_all_players_names()
         await ctx.send("test")
 
     @bot.command()
     async def register(ctx, player_name: str) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         # Check if player name is valid
         if player_name not in bot.tracker_client.player_db.get_all_players_names() :
@@ -102,7 +138,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def unregister(ctx, player_name: str = None) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         # Check if player name is valid
         if not player_name :
@@ -127,48 +163,14 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def new(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
-        user = await bot.fetch_user(discord_id)
-        if player is None :
-            await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
-        elif len(player.new_items) == 0 :
-            bot.logger.info(f"Player found : {player.player_name} but no new items to send.")
-            # DM player if no new items, to avoid spamming the channel
-            # Check if bot can DM the user
-            if user.dm_channel is None :
-                await user.create_dm() 
-            await user.dm_channel.send("You have not received any new items since the last time you checked.")
-        else :
-            if user.dm_channel is None :
-                await user.create_dm()
-            bot.logger.info(f"Player found : {player.player_name} with {len(player.new_items)} new items to send.")
-            msg = "```ansi\n"
-            async with bot.tracker_client.lock:
-                items = list(player.new_items)
-                player.new_items.clear()
-            l1 = max(len("You"), len(player.player_name)) + 1
-            l2 = max(len("Item"), max(len(item.item_name) for item in items)) + 1
-            l3 = max(len("Sender"), max(len(item.player_sending.player_name) for item in items)) + 1
-            l4 = max(len("Location"), max(len(item.location_name) for item in items)) + 1
-            msg += f"{'You'.ljust(l1)} || {'Item'.ljust(l2)} || {'Sender'.ljust(l3)} || {'Location'.ljust(l4)}\n"
-            for item in items :
-                color = await get_ansi_color_from_flag(item.flag)
-                msg += f"{ansi_ljust(player.name_colored, l1)} || \u001b[0;{color}m{item.item_name.ljust(l2)}\u001b[0m || {ansi_ljust(item.player_sending.name_colored, l3)} || {item.location_name.ljust(l4)}\n"
-                if len(msg) > 1500 : # Discord message limit is 2000 characters, keep some margin
-                    msg += "```"
-                    await user.dm_channel.send(msg)
-                    msg = "```ansi\n"
-            msg += "```"
-            if msg == f"```ansi\n```" :
-                return
-            await user.dm_channel.send(msg)
+        await send_new_items(bot, discord_id)
             
     @bot.command()
     async def enableping(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -180,7 +182,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
     
     @bot.command()
     async def disableping(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -189,10 +191,34 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         else :
             player.allow_ping = False
             await ctx.send(f"This discord bot won't bother you anymore with pings")
+            
+    @bot.command()
+    async def enableautoitems(ctx) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            player.get_new_items_auto = True
+            await ctx.send(f"You will now receive new items automatically in DM as soon as you start playing.")
+            
+    @bot.command()
+    async def disablenewitems(ctx) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            player.get_new_items_auto = False
+            await ctx.send(f"You will now have to use `!new` command to check for new items received since the last time you checked.")
 
     @bot.command()
     async def todo(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         bot.logger.info("todo command called")
         discord_id = ctx.author.id
@@ -226,7 +252,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         
     @bot.command()
     async def clear_todo(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -240,7 +266,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             
     @bot.command()
     async def remove_todo(ctx, *, item_name: str) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -261,7 +287,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                     
     @bot.command()
     async def wishlist(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -297,7 +323,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             
     @bot.command()
     async def wastedOnArchipelago(ctx) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
@@ -313,7 +339,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
 
     @bot.command()
     async def help(ctx, command: str = None) :
-        if await bad_channel_check(ctx):
+        if await bad_channel_check(ctx, bot):
             return
         if command is None :
             msg = """**Available commands:**\n

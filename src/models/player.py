@@ -25,6 +25,7 @@ class Player:
         self.is_playing = False
         self.time_joined = 0.0
         self.time_played = 0.0 # seconds
+        self.get_new_items_auto = True # TODO: add this in the configuration file
 
     def save(self):
         return {
@@ -35,7 +36,8 @@ class Player:
             "new_items": [item.save() for item in self.new_items],
             "todolist": [item.save() for item in self.todolist],
             "allow_ping": self.allow_ping,
-            "time_played": self.time_played
+            "time_played": self.time_played,
+            "get_new_items_auto": self.get_new_items_auto
         }
     
     @staticmethod
@@ -52,6 +54,7 @@ class Player:
         player.todolist = [Item.load(item_data) for item_data in data.get("todolist", [])]
         player.allow_ping = data.get("allow_ping", True)
         player.time_played = data.get("time_played", 0.0)
+        player.get_new_items_auto = data.get("get_new_items_auto", True)
         player.is_playing = False
         player.time_joined = 0.0
         return player

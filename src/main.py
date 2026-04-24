@@ -13,9 +13,10 @@ async def main():
     config = load_config()
     message_queue = Queue(maxsize=2000)
     ping_queue = Queue(maxsize=2000)
+    dm_queue = Queue(maxsize=2000)
 
-    tracker_client = TrackerClient(config, message_queue, ping_queue, logger)
-    bot = create_bot(tracker_client, message_queue, ping_queue, config, logger)
+    tracker_client = TrackerClient(config, message_queue, ping_queue, dm_queue, logger)
+    bot = create_bot(tracker_client, message_queue, ping_queue, dm_queue, config, logger)
 
     try:
         await asyncio.gather(
