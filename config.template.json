@@ -16,6 +16,7 @@
         "data_directory" : "./data"
     },
     "AdvancedConfig": {
-        "custom_deathlink_flavor" : false
+        "custom_deathlink_flavor" : false,
+        "auto_ping_new_items" : true
     }
 }

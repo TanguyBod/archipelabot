@@ -4,6 +4,11 @@ from utils.colors import get_ansi_color_from_flag
 from discord_bot.texts_flavors import *
 import asyncio
 import re
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from io import BytesIO
+import datetime
+import discord
 
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
@@ -335,7 +340,64 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             minutes = int((time_played % 3600) // 60)
             seconds = int(time_played % 60)
             await ctx.send(f"You have wasted {hours} hours, {minutes} minutes and {seconds} seconds in this Archipelago Multiworld.")
+            
+    @bot.command()
+    async def deaths(ctx) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            await ctx.send(f"You have died {len(player.deaths)} times.")
+    
+    @bot.command()
+    async def deathgraph(ctx) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        if player is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+        else :
+            if player.deaths == [] :
+                await ctx.send(f"You have not died yet. Congratulations !")
+            else :
+                deaths_minutes = [t / 60 for t in player.deaths]
+                cumulative_deaths = list(range(1, len(deaths_minutes) + 1))
+                deaths_minutes = [0] + deaths_minutes
+                cumulative_deaths = [0] + cumulative_deaths
+                plt.figure(figsize=(10,5))
+                plt.step(deaths_minutes, cumulative_deaths, where='post')
+                plt.scatter(deaths_minutes, cumulative_deaths)
+                # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
+                # plt.gcf().autofmt_xdate()
+                plt.title(f'{player.player_name} death graph')
+                plt.xlabel('Time played (minutes)')
+                plt.ylabel('Number of Deaths')
+                buf = BytesIO()
+                plt.savefig(buf, format='png')
+                buf.seek(0)
+                await ctx.send(file=discord.File(buf, filename='death_graph.png'))
                 
+    @bot.command()
+    async def globaldeaths(ctx) :
+        if await bad_channel_check(ctx, bot):
+            return
+        deaths_dict = {}
+        for player in bot.tracker_client.player_db.get_all_players() :
+            deaths_dict[player.player_name] = len(player.deaths)
+        plt.figure(figsize=(10,5))
+        plt.bar(deaths_dict.keys(), deaths_dict.values())
+        plt.title('Global Deaths')
+        plt.xlabel('Player')
+        plt.ylabel('Number of Deaths')
+        plt.xticks(rotation=45)
+        buf = BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        await ctx.send(file=discord.File(buf, filename='global_deaths.png'))
 
     @bot.command()
     async def help(ctx, command: str = None) :

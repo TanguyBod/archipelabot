@@ -233,5 +233,5 @@ def get_deathlink_flavor(dead_player: str, death_time: float) -> str :
     flavor = random.choice(DEATHLINK_FLAVOR)
     flavor = flavor.format(dead_player=dead_player)
     time_struct = time.localtime(death_time)
-    time_str = time.strftime("%m/%d %H:%M", time_struct)
-    return f"{time_str} -- {flavor}"
+    time_str = time.strftime("%m-%d %H:%M:%S", time_struct)
+    return f"```ansi\n💀 \u001b[0;31m[{time_str}]\u001b[0m {flavor}\n```"

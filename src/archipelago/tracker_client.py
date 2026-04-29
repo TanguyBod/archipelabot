@@ -70,14 +70,25 @@ class TrackerClient(ArchipelagoClient) :
                 continue
 
     async def process_bounced_message(self, message: dict) -> None :
-        if message["tags"] == ['Deathlink'] :
+        if message["tags"] == ['DeathLink'] :
             self.logger.info(f"Processing DeathLink message")
             dead_player_name = message["data"]['source']
             death_time = message["data"]['time']
             death_cause = message["data"]['cause']
             if self.custom_deathlink_flavor :
-                flavor = get_deathlink_flavor(dead_player_name, death_time)
-            
+                msg = get_deathlink_flavor(dead_player_name, death_time)
+            else :
+                time_struct = time.localtime(death_time)
+                time_str = time.strftime("%m-%d %H:%M:%S", time_struct)
+                msg = f"```ansi\n💀 \u001b[0;31m[{time_str}]\u001b[0m {death_cause}\n```"
+            self.logger.info(f"DeathLink : {dead_player_name} died at {death_time} with cause : {death_cause}")
+            await self.messages_to_send.put(msg)
+            player = self.player_db.get_player_by_name(dead_player_name)
+            if player is not None :
+                player.deaths.append(player.time_played + time.time() - player.time_joined) # Add current session time to total time played for accurate death time
+                self.logger.info(f"Player {player.player_name} now has {len(player.deaths)} deaths.")
+            else :
+                self.logger.warning(f"Player {dead_player_name} not found in player_db, cannot update deaths.")
 
     async def process_json_message(self, message: dict) -> None :
         if message["type"] == "Chat" :
