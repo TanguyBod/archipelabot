@@ -5,9 +5,7 @@ from discord_bot.texts_flavors import *
 import asyncio
 import re
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from io import BytesIO
-import datetime
 import discord
 
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
@@ -39,8 +37,8 @@ Arthur et Tanguy""")
     return False
 
 async def send_new_items(bot, player_id) :
-    player = bot.tracker_client.player_db.get_player_by_discord_id(player_id)
-    user = await bot.fetch_user(player_id)
+    player = bot.bot_client.player_db.get_player_by_discord_id(player_id)
+    user = await bot.bot_client.fetch_user(player_id)
     if user.dm_channel is None :
         await user.create_dm() 
     if player is None :
@@ -53,7 +51,7 @@ async def send_new_items(bot, player_id) :
     else :
         bot.logger.info(f"Player found : {player.player_name} with {len(player.new_items)} new items to send.")
         msg = "```ansi\n"
-        async with bot.tracker_client.lock:
+        async with bot.bot_client.lock:
             items = list(player.new_items)
             player.new_items.clear()
         l1 = max(len("You"), len(player.player_name)) + 1
@@ -76,12 +74,12 @@ async def send_new_items(bot, player_id) :
 
 def setup_commands(bot):
     
-    @bot.command()
+    @bot.command(name='hint')
     async def hint(ctx, *, hint: str):
         if await bad_channel_check(ctx, bot):
             return
         bot.logger.info(f"Hint command called with hint : {hint}")
-        player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(ctx.author.id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
             return
@@ -90,7 +88,7 @@ def setup_commands(bot):
                 hint_client_instance = HintClient(player.player_name, 
                                                 player.player_game, 
                                                 hint, 
-                                                bot.tracker_client,
+                                                bot.bot_client,
                                                 bot.config)
                 asyncio.create_task(hint_client_instance.run())
                 await hint_client_instance.finished_event.wait()
@@ -102,7 +100,7 @@ def setup_commands(bot):
                         if "(found)" in message : # Do not add the possibility to add to todo list if already found
                             await ctx.send(message)
                             continue
-                        button = Button(item, bot.tracker_client)
+                        button = Button(item, bot.bot_client)
                         message = await ctx.send(message, view=button)
                         button.message = message
                     except :
@@ -113,121 +111,121 @@ def setup_commands(bot):
                 bot.logger.error(f"Error sending hint: {e}")
                 await ctx.send(f"An error occurred while sending the hint. Please try again later.")
 
-    @bot.command()
+    @bot.command(name='players')
     async def players(ctx):
         if await bad_channel_check(ctx, bot):
             return
-        players = bot.tracker_client.player_db.get_all_players_names()
+        players = bot.bot_client.player_db.get_all_players_names()
         await ctx.send("test")
 
-    @bot.command()
+    @bot.command(name='register')
     async def register(ctx, player_name: str) :
         if await bad_channel_check(ctx, bot):
             return
         # Check if player name is valid
-        if player_name not in bot.tracker_client.player_db.get_all_players_names() :
+        if player_name not in bot.bot_client.player_db.get_all_players_names() :
             await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
-Available player names are : {', '.join(bot.tracker_client.player_db.get_all_players_names())}")
-        elif bot.tracker_client.player_db.get_player_by_name(player_name).discord_id is not None :
-            player = bot.tracker_client.player_db.get_player_by_name(player_name)
+Available player names are : {', '.join(bot.bot_client.player_db.get_all_players_names())}")
+        elif bot.bot_client.player_db.get_player_by_name(player_name).discord_id is not None :
+            player = bot.bot_client.player_db.get_player_by_name(player_name)
             await ctx.send(f"Player {player_name} is already registered by {player.discord_id}.\nIf you think this is an error, please contact the administrator.")
-        elif ctx.author.id in bot.tracker_client.player_db.get_all_discord_ids() :
-            player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
+        elif ctx.author.id in bot.bot_client.player_db.get_all_discord_ids() :
+            player = bot.bot_client.player_db.get_player_by_discord_id(ctx.author.id)
             await ctx.send(f"You have already registered player {player.player_name} to your discord account. Please unregister it first using `!unregister {player.player_name}` command before registering another player.")
         else :
             # Get discord id of the user
             discord_id = ctx.author.id
-            player = bot.tracker_client.player_db.get_player_by_name(player_name)
-            bot.tracker_client.player_db.set_discord_id(player, discord_id)
+            player = bot.bot_client.player_db.get_player_by_name(player_name)
+            bot.bot_client.player_db.set_discord_id(player, discord_id)
             await ctx.send(f"Player {player_name} successfully registered to discord user {ctx.author.name}#{ctx.author.discriminator}.")
 
-    @bot.command()
+    @bot.command(name='unregister')
     async def unregister(ctx, player_name: str = None) :
         if await bad_channel_check(ctx, bot):
             return
         # Check if player name is valid
         if not player_name :
-            player = bot.tracker_client.player_db.get_player_by_discord_id(ctx.author.id)
+            player = bot.bot_client.player_db.get_player_by_discord_id(ctx.author.id)
             if player is None :
                 await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
             else :
-                bot.tracker_client.player_db.set_discord_id(player, None)
+                bot.bot_client.player_db.set_discord_id(player, None)
                 await ctx.send(f"Player {player.player_name} successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
-        elif player_name not in bot.tracker_client.player_db.get_all_players_names() :
+        elif player_name not in bot.bot_client.player_db.get_all_players_names() :
             await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
-Available player names are : {', '.join(bot.tracker_client.player_db.get_all_players_names())}")
+Available player names are : {', '.join(bot.bot_client.player_db.get_all_players_names())}")
         else :
-            player = bot.tracker_client.player_db.get_player_by_name(player_name)
+            player = bot.bot_client.player_db.get_player_by_name(player_name)
             if player.discord_id is None :
                 await ctx.send(f"Player {player_name} is not registered to any discord user.")
             elif player.discord_id != ctx.author.id :
                 await ctx.send(f"Player {player_name} is registered to another discord user. You cannot unregister it.\nIf you think this is an error, please contact the administrator.")
             else :
-                bot.tracker_client.player_db.set_discord_id(player, None)
+                bot.bot_client.player_db.set_discord_id(player, None)
                 await ctx.send(f"Player {player_name} successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
 
-    @bot.command()
+    @bot.command(name='new')
     async def new(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
         await send_new_items(bot, discord_id)
             
-    @bot.command()
+    @bot.command(name='enableping')
     async def enableping(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
             player.allow_ping = True
             await ctx.send(f"This discord bot can now ping you")
     
-    @bot.command()
+    @bot.command(name='disableping')
     async def disableping(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
             player.allow_ping = False
             await ctx.send(f"This discord bot won't bother you anymore with pings")
             
-    @bot.command()
+    @bot.command(name='enablenewitems')
     async def enablenewitems(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
             player.get_new_items_auto = True
             await ctx.send(f"You will now receive new items automatically in DM as soon as you start playing.")
             
-    @bot.command()
+    @bot.command(name='disablenewitems')
     async def disablenewitems(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
             player.get_new_items_auto = False
             await ctx.send(f"You will now have to use `!new` command to check for new items received since the last time you checked.")
 
-    @bot.command()
+    @bot.command(name='todo')
     async def todo(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         bot.logger.info("todo command called")
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         elif player.todolist == [] :
@@ -235,7 +233,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             await ctx.send(flavor)
         else :
             bot.logger.info(f"Player found : {player.player_name} with {len(player.todolist)} items in todo list.")
-            async with bot.tracker_client.lock:
+            async with bot.bot_client.lock:
                 items = list(player.todolist)
             flavor = get_todolist_flavor()
             msg = f"```ansi\n{flavor}\n\n"
@@ -255,30 +253,30 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             await ctx.send(msg)
 
         
-    @bot.command()
+    @bot.command(name="clearTodo")
     async def clear_todo(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
-            async with bot.tracker_client.lock:
+            async with bot.bot_client.lock:
                 player.todolist.clear()
             msg = get_clear_todolist_flavor()
             await ctx.send(msg)
             
-    @bot.command()
+    @bot.command(name='removeTodo')
     async def remove_todo(ctx, *, item_name: str) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
-            async with bot.tracker_client.lock:
+            async with bot.bot_client.lock:
                 item_to_remove = None
                 for item in player.todolist :
                     if item.item_name.lower() == item_name.lower() :
@@ -290,19 +288,19 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                     player.todolist.remove(item_to_remove)
                     await ctx.send(f"Item {item_name} removed from your todo list.")
                     
-    @bot.command()
+    @bot.command(name='wishlist')
     async def wishlist(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         wishlist = []
-        for other_player in bot.tracker_client.player_db.get_all_players() :
+        for other_player in bot.bot_client.player_db.get_all_players() :
             if other_player.player_name == player.player_name :
                 continue
-            async with bot.tracker_client.lock:
+            async with bot.bot_client.lock:
                 for item in other_player.todolist:
                     if item.player_recieving.player_name == player.player_name :
                         wishlist.append(item)
@@ -326,12 +324,12 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                 return
             await ctx.send(msg)
             
-    @bot.command()
+    @bot.command(name='wastedOnArchipelago')
     async def wastedOnArchipelago(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
@@ -341,23 +339,23 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             seconds = int(time_played % 60)
             await ctx.send(f"You have wasted {hours} hours, {minutes} minutes and {seconds} seconds in this Archipelago Multiworld.")
             
-    @bot.command()
+    @bot.command(name='deaths')
     async def deaths(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
             await ctx.send(f"You have died {len(player.deaths)} times.")
     
-    @bot.command()
+    @bot.command(name='deathgraph')
     async def deathgraph(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.tracker_client.player_db.get_player_by_discord_id(discord_id)
+        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
@@ -371,8 +369,6 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                 plt.figure(figsize=(10,5))
                 plt.step(deaths_minutes, cumulative_deaths, where='post')
                 plt.scatter(deaths_minutes, cumulative_deaths)
-                # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
-                # plt.gcf().autofmt_xdate()
                 plt.title(f'{player.player_name} death graph')
                 plt.xlabel('Time played (minutes)')
                 plt.ylabel('Number of Deaths')
@@ -381,12 +377,12 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
                 buf.seek(0)
                 await ctx.send(file=discord.File(buf, filename='death_graph.png'))
                 
-    @bot.command()
+    @bot.command(name='globaldeaths')
     async def globaldeaths(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         deaths_dict = {}
-        for player in bot.tracker_client.player_db.get_all_players() :
+        for player in bot.bot_client.player_db.get_all_players() :
             deaths_dict[player.player_name] = len(player.deaths)
         plt.figure(figsize=(10,5))
         plt.bar(deaths_dict.keys(), deaths_dict.values())
@@ -399,7 +395,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
         buf.seek(0)
         await ctx.send(file=discord.File(buf, filename='global_deaths.png'))
 
-    @bot.command()
+    @bot.command(name='help')
     async def help(ctx, command: str = None) :
         if await bad_channel_check(ctx, bot):
             return
@@ -407,7 +403,7 @@ Available player names are : {', '.join(bot.tracker_client.player_db.get_all_pla
             msg = """**Available commands:**\n
 `!register <player_name>` : Register your discord account to a player. You will receive notifications about this player's items and you can use other commands to see the player's todo list and new items.\n
 `!unregister <Optional : player_name>` : Unregister your discord account from a player. If player_name is not provided, it will unregister from the player you are currently registered to. If player_name is provided, it will unregister from that player if you are registered to it.\n
-`!players` : List all players in the tracker.\n
+`!players` : List all players in the game.\n
 `!hint <hint>` : Send a hint to the tracker. The hint will be processed and you'll be able to add the item to the sender's todo list.\n
 `!new` : Check for new items received since the last time you checked. The items will be sent to you in a DM to avoid spamming the channel.\n
 `!enableping` : Allow the bot to ping you when (i.e. in a todolist) an item you wanted is sent by another player.\n
@@ -426,8 +422,8 @@ Example : `!register Alice` will register you to the player named Alice. You can
                 msg = """`!unregister <Optional : player_name>` : Unregister your discord account from a player. If player_name is not provided, it will unregister from the player you are currently registered to. If player_name is provided, it will unregister from that player if you are registered to it.\n
 Example : `!unregister` will unregister you from the player you are currently registered to. `!unregister Alice` will unregister you from the player named Alice if you are registered to it."""
             elif command == "players" :
-                msg = """`!players` : List all players in the tracker.\n
-Example : `!players` will list all players in the tracker. This command is useful to know the exact spelling of the player names to use them in other commands."""
+                msg = """`!players` : List all players in the game.\n
+Example : `!players` will list all players in the game. This command is useful to know the exact spelling of the player names to use them in other commands."""
             elif command == "hint" :
                 msg = """`!hint <hint>` : Send a hint to the tracker. The hint will be processed and you'll be able to add the item to the sender's todo list.\n
 Example : `!hint I found a red chest in the forest` will send the hint "I found a red chest in the forest" to the tracker. If the hint is recognized as an item, you will receive a message with the item name and a button to add it to the sender's todo list."""

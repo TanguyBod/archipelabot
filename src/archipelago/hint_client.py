@@ -1,5 +1,5 @@
 from archipelago.base_client import ArchipelagoClient
-from archipelago.tracker_client import TrackerClient
+from archipelago.bot_client import BotClient
 from utils.colors import get_ansi_color_from_flag
 from models.item import Item
 import asyncio
@@ -9,9 +9,9 @@ class HintClient(ArchipelagoClient) :
                  player_name: str, 
                  player_game: str,
                  hint : str,
-                 tracker_client : TrackerClient,
+                 bot_client : BotClient,
                  config) :
-        super().__init__(config, logger=tracker_client.logger)
+        super().__init__(config, logger=bot_client.logger)
         self.game = player_game
         self.tags = set(['TextOnly'])
         self.slot_name : str = player_name
@@ -19,7 +19,7 @@ class HintClient(ArchipelagoClient) :
         self.discord_bot_queue = asyncio.Queue(maxsize=2000)
         self.hint_requested = hint
         self.finished_event = asyncio.Event()
-        self.client_base = tracker_client
+        self.client_base = bot_client
         self.hintpoints = 0
         self.hint_found = False
     

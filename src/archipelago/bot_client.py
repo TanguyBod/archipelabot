@@ -11,7 +11,7 @@ import json
 import os
 
 
-class TrackerClient(ArchipelagoClient) :
+class BotClient(ArchipelagoClient) :
     def __init__(self, config: dict[str, any], message_queue: asyncio.Queue, ping_queue: asyncio.Queue, dm_queue: asyncio.Queue, logger: logging.Logger) :
         super().__init__(config, logger=logger)
         # Make sure data directory exists

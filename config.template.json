@@ -10,7 +10,8 @@
         "normal_channel_id" : "",
         "ping_channel_id" : "", 
         "debug_channel_id" : "",
-        "command_prefix" : "!"
+        "command_prefix" : "!",
+        "admin_ids" : []
     },
     "DatabaseConfig": {
         "data_directory" : "./data"

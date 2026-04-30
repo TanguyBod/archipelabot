@@ -1,7 +1,7 @@
 import asyncio
 import os
 from utils.config import load_config
-from archipelago.tracker_client import TrackerClient
+from archipelago.bot_client import BotClient
 from discord_bot.bot import create_bot
 from asyncio import Queue
 import logging
@@ -15,12 +15,12 @@ async def main():
     ping_queue = Queue(maxsize=2000)
     dm_queue = Queue(maxsize=2000)
 
-    tracker_client = TrackerClient(config, message_queue, ping_queue, dm_queue, logger)
-    bot = create_bot(tracker_client, message_queue, ping_queue, dm_queue, config, logger)
+    bot_client = BotClient(config, message_queue, ping_queue, dm_queue, logger)
+    bot = create_bot(bot_client, message_queue, ping_queue, dm_queue, config, logger)
 
     try:
         await asyncio.gather(
-            tracker_client.run(),
+            bot_client.run(),
             bot.start(config["DiscordConfig"]["app_token"])
         )
 
@@ -28,8 +28,8 @@ async def main():
         logger.info("\nShutting down cleanly...")
         # Make sure data folder exists
         os.makedirs(config["DatabaseConfig"]["data_directory"], exist_ok=True)
-        tracker_client.player_db.save_db(f"{config['DatabaseConfig']['data_directory']}/players.json")
-        await tracker_client.stop()
+        bot_client.player_db.save_db(f"{config['DatabaseConfig']['data_directory']}/players.json")
+        await bot_client.stop()
         await bot.close()
 
 if __name__ == "__main__":

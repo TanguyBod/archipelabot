@@ -2,11 +2,11 @@ import discord
 from models.item import Item
 
 class Button(discord.ui.View):
-    def __init__(self, item: Item = None, tracker_client = None):
+    def __init__(self, item: Item = None, bot_client = None):
         super().__init__(timeout=600)
         self.active = False 
         self.item = item
-        self.tracker_client = tracker_client
+        self.bot_client = bot_client
 
     @discord.ui.button(label="Add to todolist", style=discord.ButtonStyle.primary)
     async def toggle(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -17,7 +17,7 @@ class Button(discord.ui.View):
 
             # Add the item to the player's todolist
             print("Looking for player sending the item : "+self.item.player_sending.player_name)
-            player_sending = self.tracker_client.player_db.get_player_by_name(self.item.player_sending.player_name)
+            player_sending = self.bot_client.player_db.get_player_by_name(self.item.player_sending.player_name)
             # Check if the item is already in the player's todolist to avoid duplicates
             for item in player_sending.todolist:
                 if item.item_name == self.item.item_name and item.location_name == self.item.location_name:
@@ -37,7 +37,7 @@ class Button(discord.ui.View):
             button.style = discord.ButtonStyle.primary
 
             # Remove the item from the player's todolist
-            player_sending = self.tracker_client.player_db.get_player_by_name(self.item.player_sending.player_name)
+            player_sending = self.bot_client.player_db.get_player_by_name(self.item.player_sending.player_name)
             print(f"Removing item {self.item.item_name} from todolist of player {player_sending.player_name}")
             if self.item in player_sending.todolist:
                 player_sending.todolist.remove(self.item)
