@@ -40,7 +40,7 @@ Arthur et Tanguy""")
 
 async def send_new_items(bot, player_id) :
     player = bot.bot_client.player_db.get_player_by_discord_id(player_id)
-    user = await bot.bot_client.fetch_user(player_id)
+    user = await bot.fetch_user(player_id)
     if user.dm_channel is None :
         await user.create_dm() 
     if player is None :
