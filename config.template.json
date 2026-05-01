@@ -3,7 +3,7 @@
         "client_url" : "",
         "client_port" : "",
         "password" : null,
-        "bot_slot" : "Archipelabot"
+        "bot_slot" : "ArchiLink"
     },
     "DiscordConfig": {
         "app_token" : "",

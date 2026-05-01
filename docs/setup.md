@@ -85,6 +85,10 @@ Your bot is now registered and ready to use.
 
 ---
 
+# Setup the Archipelago MultiWorld
+
+When generating the Archipelago MultiWorld you'll have to add the [archilink.yaml](https://github.com/TanguyBod/ArchiLink/blob/main/archilink.yaml) in order to allow the bot to access messages sent by the server.
+
 # Clone the project and install dependencies
 
 Clone the repository:
