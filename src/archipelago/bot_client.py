@@ -80,7 +80,7 @@ class BotClient(ArchipelagoClient) :
             else :
                 time_struct = time.localtime(death_time)
                 time_str = time.strftime("%m-%d %H:%M:%S", time_struct)
-                msg = f"```ansi\n💀 \u001b[0;31m[{time_str}]\u001b[0m {death_cause}\n```"
+                msg = f"```ansi\n💀 \u001b[0;31m[{time_str}]\u001b[0m {dead_player_name} : {death_cause}\n```"
             self.logger.info(f"DeathLink : {dead_player_name} died at {death_time} with cause : {death_cause}")
             await self.messages_to_send.put(msg)
             player = self.player_db.get_player_by_name(dead_player_name)
@@ -137,6 +137,7 @@ class BotClient(ArchipelagoClient) :
                 self.logger.info(f"Item sent from {item_sent.player_sending.player_name} added to player {item_sent.player_recieving.player_name} new items list.")
                 async with self.lock:
                     item_sent.player_recieving.new_items.append(item_sent)
+            item_sent.player_sending.checked_locations += 1 # Keep track of number of checks locations
             await self.remove_item_from_todolist(item_sent)
             await self.messages_to_send.put(msg_str)
             

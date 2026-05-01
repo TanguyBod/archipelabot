@@ -401,12 +401,13 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
     async def progress_graph(ctx):
         if await bad_channel_check(ctx, bot):
             return
-        percentage_dict = {}
+        percentage_dict = {}; checks_dict = {}
         for player in bot.bot_client.player_db.get_all_players() :
             if player.total_locations <= 0 :
                 await ctx.send(f"Error retrieving total locations for player {player.player_name}. Cannot compute progress graph.")
                 return
             percentage = (player.checked_locations / player.total_locations * 100) if player.total_locations > 0 else 0
+            checks_dict[player.player_name] = player.checked_locations
             percentage_dict[player.player_name] = percentage
         num_players = len(percentage_dict)
         plt.figure(figsize=(max(10, num_players*0.5), 8))
@@ -414,7 +415,18 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         norm = mcolors.Normalize(vmin=0, vmax=100)
         cmap = cm.get_cmap('coolwarm')
         colors = [cmap(norm(v)) for v in values]
-        plt.bar(percentage_dict.keys(), percentage_dict.values(), color=colors)
+        bars = plt.bar(percentage_dict.keys(), percentage_dict.values(), color=colors)
+        # Add value labels on top of bars
+        for bar, player_name in zip(bars, percentage_dict.keys()):
+            height = bar.get_height()
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                height + 1,
+                str(checks_dict[player_name]),
+                ha='center',
+                va='bottom',
+                fontsize=9
+            )
         plt.title('Progress Graph')
         plt.xlabel('Player')
         plt.ylabel('Percentage of checked locations')
