@@ -142,7 +142,7 @@ class BotClient(ArchipelagoClient) :
             await self.messages_to_send.put(msg_str)
             
         elif message["type"] == "Join" :
-            if message["tags"] == ["TextOnly"] :
+            if message["tags"] == ["TextOnly"] or message["tags"] == ["Tracker"] :
                 self.logger.info(f"Received Join message from TextOnly client, ignoring it for player count : {message['slot']}")
                 return # Ignore Join messages from TextOnly clients, count only when playing
             player_slot = int(message["slot"])
