@@ -55,3 +55,4 @@ class Button(discord.ui.View):
             item.disabled = True
         if hasattr(self, "message"):
             await self.message.edit(view=self)
+        

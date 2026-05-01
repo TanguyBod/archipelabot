@@ -9,6 +9,7 @@ class Item:
         player_sending=None,
         player_recieving=None,
         flag=None,
+        doable=True
     ):
         self.item_name = item_name
         self.item_id = item_id
@@ -18,6 +19,7 @@ class Item:
         self.player_sending = player_sending
         self.player_recieving = player_recieving
         self.flag = flag
+        self.doable = doable
 
     def __str__(self):
         return f"Item(name={self.item_name or 'Unknown'}, \
@@ -27,7 +29,8 @@ class Item:
         location_id={self.location_id or 'Unknown'}, \
         player_sending={self.player_sending.player_name if self.player_sending else None}, \
         player_recieving={self.player_recieving.player_name if self.player_recieving else None}, \
-        flag={self.flag or 'None'})"
+        flag={self.flag or 'None'}, \
+        doable={self.doable})"
     
     def save(self):
         return {
@@ -38,7 +41,8 @@ class Item:
             "location_id": self.location_id,
             "player_sending": self.player_sending.player_name if self.player_sending else None,
             "player_recieving": self.player_recieving.player_name if self.player_recieving else None,
-            "flag": self.flag
+            "flag": self.flag,
+            "doable": self.doable
         }
     
     @staticmethod   
@@ -50,6 +54,7 @@ class Item:
             location_name=data.get("location_name"),
             location_id=data.get("location_id"),
             flag=data.get("flag"),
+            doable=data.get("doable", True),
             player_recieving=data.get("player_recieving"), # Is currently the player name, will be resolved later when we have access to the PlayerDB
             player_sending=data.get("player_sending") # Same here
         )
