@@ -29,7 +29,7 @@ class ArchipelagoClient(ABC) :
     
     async def connect(self) :
         self.ap_connection = await connect(
-            f"ws://{self.client_url}:{self.client_port}",
+            f"wss://{self.client_url}:{self.client_port}",
             max_size=None
         )
         
