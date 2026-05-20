@@ -1,4 +1,5 @@
 from archipelago.hint_client import HintClient
+from models.discord_profil import DiscordProfile
 from models.button import Button
 from utils.colors import get_ansi_color_from_flag
 from discord_bot.texts_flavors import *
@@ -68,47 +69,47 @@ def setup_commands(bot):
         if await bad_channel_check(ctx, bot):
             return
         bot.logger.info(f"Hint command called with hint : {hint}")
-        player = bot.bot_client.player_db.get_player_by_discord_id(ctx.author.id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(ctx.author.id)
+        if discord_profil is None :
             await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
             return
-        else :
-            try :
-                hint_client_instance = HintClient(player.player_name, 
-                                                player.player_game, 
-                                                hint, 
-                                                bot.bot_client,
-                                                bot.config)
-                asyncio.create_task(hint_client_instance.run())
-                await hint_client_instance.finished_event.wait()
-                # Send all messages in the queue :
-                while not hint_client_instance.discord_bot_queue.empty() :
-                    message = await hint_client_instance.discord_bot_queue.get()
-                    try :
-                        message, item = message
-                        if "(found)" in message : # Do not add the possibility to add to todo list if already found
-                            await ctx.send(message)
-                            continue
-                        button = Button(item, bot.bot_client)
-                        message = await ctx.send(message, view=button)
-                        button.message = message
-                    except :
+        player = discord_profil.current_slot
+        try :
+            hint_client_instance = HintClient(player.player_name, 
+                                            player.player_game, 
+                                            hint, 
+                                            bot.bot_client,
+                                            bot.config)
+            asyncio.create_task(hint_client_instance.run())
+            await hint_client_instance.finished_event.wait()
+            # Send all messages in the queue :
+            while not hint_client_instance.discord_bot_queue.empty() :
+                message = await hint_client_instance.discord_bot_queue.get()
+                try :
+                    message, item = message
+                    if "(found)" in message : # Do not add the possibility to add to todo list if already found
                         await ctx.send(message)
-                # Terminate hint client
-                await hint_client_instance.stop()
-            except Exception as e :
-                bot.logger.error(f"Error sending hint: {e}")
-                await ctx.send(f"An error occurred while sending the hint. Please try again later.")
+                        continue
+                    button = Button(item, bot.bot_client)
+                    message = await ctx.send(message, view=button)
+                    button.message = message
+                except :
+                    await ctx.send(message)
+            # Terminate hint client
+            await hint_client_instance.stop()
+        except Exception as e :
+            bot.logger.error(f"Error sending hint: {e}")
+            await ctx.send(f"An error occurred while sending the hint. Please try again later.")
 
     @bot.command(name='players')
     async def players(ctx):
         if await bad_channel_check(ctx, bot):
             return
         players = bot.bot_client.player_db.get_all_players_names()
-        await ctx.send("test")
+        await ctx.send(f"Players in this multiworld are : {', '.join(players)}")
 
     @bot.command(name='register')
-    async def register(ctx, player_name: str) :
+    async def register(ctx, *, player_name: str) :
         if await bad_channel_check(ctx, bot):
             return
         # Check if player name is valid
@@ -118,70 +119,126 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         elif bot.bot_client.player_db.get_player_by_name(player_name).discord_id is not None :
             player = bot.bot_client.player_db.get_player_by_name(player_name)
             await ctx.send(f"Player {player_name} is already registered by {player.discord_id}.\nIf you think this is an error, please contact the administrator.")
-        elif ctx.author.id in bot.bot_client.player_db.get_all_discord_ids() :
-            player = bot.bot_client.player_db.get_player_by_discord_id(ctx.author.id)
-            await ctx.send(f"You have already registered player {player.player_name} to your discord account. Please unregister it first using `!unregister {player.player_name}` command before registering another player.")
         else :
-            # Get discord id of the user
-            discord_id = ctx.author.id
+            discord_profil = bot.bot_client.discord_db.get_discord_profile(ctx.author.id)
+            if discord_profil is None :
+                discord_profil = DiscordProfile(ctx.author.name, ctx.author.id)
             player = bot.bot_client.player_db.get_player_by_name(player_name)
-            bot.bot_client.player_db.set_discord_id(player, discord_id)
-            await ctx.send(f"Player {player_name} successfully registered to discord user {ctx.author.name}#{ctx.author.discriminator}.")
+            # Link player and discord profile
+            discord_profil.slots.append(player)
+            discord_profil.current_slot = player
+            bot.bot_client.discord_db.add_discord_profile(discord_profil)
+            bot.bot_client.player_db.set_discord_id(player, discord_profil.id)
+            await ctx.send(f"Player {player_name} successfully registered to discord user {ctx.author.name}#{ctx.author.discriminator}.\n\
+You are currently registered to : {', '.join([p.player_name for p in discord_profil.slots])}")
 
     @bot.command(name='unregister')
-    async def unregister(ctx, player_name: str = None) :
-        if await bad_channel_check(ctx, bot):
-            return
-        # Check if player name is valid
-        if not player_name :
-            player = bot.bot_client.player_db.get_player_by_discord_id(ctx.author.id)
-            if player is None :
-                await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
-            else :
-                bot.bot_client.player_db.set_discord_id(player, None)
-                await ctx.send(f"Player {player.player_name} successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
-        elif player_name not in bot.bot_client.player_db.get_all_players_names() :
-            await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
-Available player names are : {', '.join(bot.bot_client.player_db.get_all_players_names())}")
-        else :
-            player = bot.bot_client.player_db.get_player_by_name(player_name)
-            if player.discord_id is None :
-                await ctx.send(f"Player {player_name} is not registered to any discord user.")
-            elif player.discord_id != ctx.author.id :
-                await ctx.send(f"Player {player_name} is registered to another discord user. You cannot unregister it.\nIf you think this is an error, please contact the administrator.")
-            else :
-                bot.bot_client.player_db.set_discord_id(player, None)
-                await ctx.send(f"Player {player_name} successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
-
-    @bot.command(name='new')
-    async def new(ctx) :
+    async def unregister(ctx, *, player_name: str = None) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        await send_new_items(bot, discord_id)
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        registered_players = [p.player_name for p in discord_profil.slots] if discord_profil else []
+        if registered_players == [] :
+            await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
+            return
+        elif player_name is not None and player_name not in registered_players :
+            await ctx.send(f"You are not registered to player {player_name}. You are currently registered to : {', '.join(registered_players)}.")
+        elif player_name is not None and player_name in registered_players :
+            player = bot.bot_client.player_db.get_player_by_name(player_name)
+            # Unlink player and discord profile
+            discord_profil.slots.remove(player)
+            bot.bot_client.player_db.set_discord_id(player, None)
+            await ctx.send(f"Player {player_name} successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
+        else :
+            # Unregister from all players
+            for player in discord_profil.slots:
+                bot.bot_client.player_db.set_discord_id(player, None)
+            discord_profil.slots.clear()
+            await ctx.send(f"All players successfully unregistered from discord user {ctx.author.name}#{ctx.author.discriminator}.")
+            
+    @bot.command(name='current')
+    async def current(ctx) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None or discord_profil.slots == [] :
+            await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
+            return
+        else :
+            current_player = discord_profil.current_slot
+            await ctx.send(f"You are currently tracking {current_player.player_name}. Use `!switch` command to switch to another player if you are registered to multiple players.")
+    
+    @bot.command(name='switch')
+    async def switch(ctx, *, player_name: str = None) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None or discord_profil.slots == [] :
+            await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
+            return
+        elif player_name == None :
+            # Switch to next slot in the list
+            current_player = discord_profil.current_slot
+            if current_player is None :
+                discord_profil.current_slot = discord_profil.slots[0]
+                await ctx.send(f"Successfully switched to player {discord_profil.slots[0].player_name}.")
+            else :
+                current_index = discord_profil.slots.index(current_player)
+                next_index = (current_index + 1) % len(discord_profil.slots)
+                discord_profil.current_slot = discord_profil.slots[next_index]
+                await ctx.send(f"Successfully switched to player {discord_profil.slots[next_index].player_name}.")
+        elif player_name not in [p.player_name for p in discord_profil.slots] :
+            await ctx.send(f"You are not registered to player {player_name}. You are currently registered to : {', '.join([p.player_name for p in discord_profil.slots])}.")
+        else :
+            player = bot.bot_client.player_db.get_player_by_name(player_name)
+            discord_profil.current_slot = player
+            await ctx.send(f"Successfully switched to player {player_name}.")
+
+    @bot.command(name='new')
+    async def new(ctx, all: str = None) :
+        if await bad_channel_check(ctx, bot):
+            return
+        discord_id = ctx.author.id
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None or discord_profil.slots == [] :
+            await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
+            return
+        elif all == "all" :
+            for player in discord_profil.slots :
+                await send_new_items(bot, player.discord_id)
+        else :
+            current_player = discord_profil.current_slot
+            await send_new_items(bot, current_player.discord_id)
             
     @bot.command(name='enableping')
     async def enableping(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        registered_players = [p.player_name for p in discord_profil.slots] if discord_profil else []
+        if registered_players == [] :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
-            player.allow_ping = True
-            await ctx.send(f"This discord bot can now ping you")
+            for player in discord_profil.slots :
+                player.allow_ping = True
+            await ctx.send(f"This discord bot will now ping you when another player finds an item relevant to your todo list.")
     
     @bot.command(name='disableping')
     async def disableping(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        registered_players = [p.player_name for p in discord_profil.slots] if discord_profil else []
+        if registered_players == [] :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
-            player.allow_ping = False
+            for player in discord_profil.slots :
+                player.allow_ping = False
             await ctx.send(f"This discord bot won't bother you anymore with pings")
             
     @bot.command(name='enablenewitems')
@@ -189,11 +246,13 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        registered_players = [p.player_name for p in discord_profil.slots] if discord_profil else []
+        if registered_players == [] :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
-            player.get_new_items_auto = True
+            for player in discord_profil.slots :
+                player.get_new_items_auto = True
             await ctx.send(f"You will now receive new items automatically in DM as soon as you start playing.")
             
     @bot.command(name='disablenewitems')
@@ -201,11 +260,13 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        registered_players = [p.player_name for p in discord_profil.slots] if discord_profil else []
+        if registered_players == [] :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         else :
-            player.get_new_items_auto = False
+            for player in discord_profil.slots :
+                player.get_new_items_auto = False
             await ctx.send(f"You will now have to use `!new` command to check for new items received since the last time you checked.")
 
     @bot.command(name='todo')
@@ -213,13 +274,16 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         if await bad_channel_check(ctx, bot):
             return
         bot.logger.info("todo command called")
-        discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(ctx.author.id)
+        if discord_profil is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+            return
+        player = discord_profil.current_slot
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
         elif player.todolist == [] :
             flavor = get_empty_todolist_flavor()
-            await ctx.send(flavor)
+            await ctx.send(f"{player.player_name} : {flavor}")
         else :
             bot.logger.info(f"Player found : {player.player_name} with {len(player.todolist)} items in todo list.")
             async with bot.bot_client.lock:
@@ -247,9 +311,14 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None :
+            await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+            return
+        player = discord_profil.current_slot
         if player is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+            return
         else :
             async with bot.bot_client.lock:
                 player.todolist.clear()
@@ -261,34 +330,36 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
-        else :
-            async with bot.bot_client.lock:
-                item_to_remove = None
-                for item in player.todolist :
-                    if item.item_name.lower() == item_name.lower() :
-                        item_to_remove = item
-                        break
-                if item_to_remove is None :
-                    await ctx.send(f"Item {item_name} not found in your todo list.")
-                else :
-                    player.todolist.remove(item_to_remove)
-                    await ctx.send(f"Item {item_name} removed from your todo list.")
+            return
+        player = discord_profil.current_slot
+        async with bot.bot_client.lock:
+            item_to_remove = None
+            for item in player.todolist :
+                if item.item_name.lower() == item_name.lower() :
+                    item_to_remove = item
+                    break
+            if item_to_remove is None :
+                await ctx.send(f"Item {item_name} not found in your todo list.")
+            else :
+                player.todolist.remove(item_to_remove)
+                await ctx.send(f"Item {item_name} removed from your todo list.")
                     
     @bot.command(name='wishlist')
     async def wishlist(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+            return
+        player = discord_profil.current_slot
+        bot.logger.info(f"Wishlist command called for player {player.player_name}")
         wishlist = []
         for other_player in bot.bot_client.player_db.get_all_players() :
-            if other_player.player_name == player.player_name :
-                continue
             async with bot.bot_client.lock:
                 for item in other_player.todolist:
                     if item.player_recieving.player_name == player.player_name :
@@ -318,53 +389,56 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
-        else :
-            time_played = player.time_played
-            hours = int(time_played // 3600)
-            minutes = int((time_played % 3600) // 60)
-            seconds = int(time_played % 60)
-            await ctx.send(f"You have wasted {hours} hours, {minutes} minutes and {seconds} seconds in this Archipelago Multiworld.")
+            return
+        player = discord_profil.current_slot
+        time_played = player.time_played
+        hours = int(time_played // 3600)
+        minutes = int((time_played % 3600) // 60)
+        seconds = int(time_played % 60)
+        await ctx.send(f"You have wasted {hours} hours, {minutes} minutes and {seconds} seconds in this Archipelago Multiworld.")
             
     @bot.command(name='deaths')
     async def deaths(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
-        else :
-            await ctx.send(f"You have died {len(player.deaths)} times.")
+            return
+        player = discord_profil.current_slot
+        await ctx.send(f"You have died {len(player.deaths)} times.")
     
     @bot.command(name='deathgraph')
     async def deathgraph(ctx) :
         if await bad_channel_check(ctx, bot):
             return
         discord_id = ctx.author.id
-        player = bot.bot_client.player_db.get_player_by_discord_id(discord_id)
-        if player is None :
+        discord_profil = bot.bot_client.discord_db.get_discord_profile(discord_id)
+        if discord_profil is None :
             await ctx.send(f"You are not registered to any player. Please register first usign `!register <name>` command.")
+            return
+        player = discord_profil.current_slot
+        if player.deaths == [] :
+            await ctx.send(f"You have not died yet. Congratulations !")
         else :
-            if player.deaths == [] :
-                await ctx.send(f"You have not died yet. Congratulations !")
-            else :
-                deaths_minutes = [t / 60 for t in player.deaths]
-                cumulative_deaths = list(range(1, len(deaths_minutes) + 1))
-                deaths_minutes = [0] + deaths_minutes
-                cumulative_deaths = [0] + cumulative_deaths
-                plt.figure(figsize=(10,5))
-                plt.step(deaths_minutes, cumulative_deaths, where='post')
-                plt.scatter(deaths_minutes, cumulative_deaths)
-                plt.title(f'{player.player_name} death graph')
-                plt.xlabel('Time played (minutes)')
-                plt.ylabel('Number of Deaths')
-                buf = BytesIO()
-                plt.savefig(buf, format='png')
-                buf.seek(0)
-                await ctx.send(file=discord.File(buf, filename='death_graph.png'))
+            deaths_minutes = [t / 60 for t in player.deaths]
+            cumulative_deaths = list(range(1, len(deaths_minutes) + 1))
+            deaths_minutes = [0] + deaths_minutes
+            cumulative_deaths = [0] + cumulative_deaths
+            plt.figure(figsize=(10,5))
+            plt.step(deaths_minutes, cumulative_deaths, where='post')
+            plt.scatter(deaths_minutes, cumulative_deaths)
+            plt.title(f'{player.player_name} death graph')
+            plt.xlabel('Time played (minutes)')
+            plt.ylabel('Number of Deaths')
+            buf = BytesIO()
+            plt.savefig(buf, format='png')
+            buf.seek(0)
+            await ctx.send(file=discord.File(buf, filename='death_graph.png'))
                 
     @bot.command(name='globaldeaths')
     async def globaldeaths(ctx) :
@@ -422,9 +496,6 @@ Available player names are : {', '.join(bot.bot_client.player_db.get_all_players
         plt.savefig(buf, format='png')
         buf.seek(0)
         await ctx.send(file=discord.File(buf, filename='progress_graph.png'))
-
-    # Updated `help` Command
-
 
     @bot.command(name='help')
     async def help(ctx, command: str = None):

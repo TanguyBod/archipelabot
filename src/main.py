@@ -29,6 +29,7 @@ async def main():
         # Make sure data folder exists
         os.makedirs(config["DatabaseConfig"]["data_directory"], exist_ok=True)
         bot_client.player_db.save_db(f"{config['DatabaseConfig']['data_directory']}/players.json")
+        bot_client.discord_db.save_db(f"{config['DatabaseConfig']['data_directory']}/discord_profiles.json")
         await bot_client.stop()
         await bot.close()
 

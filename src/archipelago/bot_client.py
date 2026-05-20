@@ -1,4 +1,5 @@
 from archipelago.base_client import ArchipelagoClient
+from models.discord_profil import DiscordDB, DiscordProfile
 from models.player_db import PlayerDB
 from models.item import Item
 from utils.colors import get_ansi_color_from_flag
@@ -20,6 +21,7 @@ class BotClient(ArchipelagoClient) :
         self.slot_name : str = config["ArchipelagoConfig"]["bot_slot"]
         self.ap_connection = None
         self.player_db = PlayerDB(config["DatabaseConfig"]["data_directory"]+"/players.json")
+        self.discord_db = DiscordDB(config["DatabaseConfig"]["data_directory"]+"/discord_profiles.json", self.player_db)
         self.datapackage = None
         self.datapackage_reversed = False 
         self.lock = asyncio.Lock() # Lock to protect shared resources
@@ -208,7 +210,7 @@ class BotClient(ArchipelagoClient) :
                 self.logger.info(f"Item {item.item_name} found in {item.player_sending.player_name} todolist, removing it.")
                 player_sending.todolist.remove(item_todo)
                 sending_str = item.player_sending.player_name
-                recieving_str = f"<@{item.player_recieving.discord_id}>" if item.player_recieving.allow_ping and item.player_recieving.discord_id is not None else item.player_recieving.player_name
+                recieving_str = f"<@{item.player_recieving.discord_id}> ({item.player_recieving.player_name})" if item.player_recieving.allow_ping and item.player_recieving.discord_id is not None else item.player_recieving.player_name
                 msg_flavor = get_fulfilled_wish_flavor(sending_str, recieving_str, item.item_name, item.location_name)
                 await self.ping_queue.put(msg_flavor)
                 return True

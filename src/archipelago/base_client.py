@@ -7,12 +7,13 @@ from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosedOK
 
 class ArchipelagoClient(ABC) :
-    version : dict[str, any] = {"major": 0, "minor": 6, "build": 6, "class": "Version"}
+    version : dict[str, any] = {"major": 0, "minor": 6, "build": 7, "class": "Version"}
     items_handling: int = 0b000 # Does not receive any items
     
     def __init__(self, config: dict[str, any], logger: logging.Logger) :
         self.client_url : str = str(config["ArchipelagoConfig"]["client_url"])
         self.client_port : str = str(config["ArchipelagoConfig"]["client_port"])
+        self.self_hosted : bool = bool(config["ArchipelagoConfig"]["self_hosted"])
         self.password : str = str(config["ArchipelagoConfig"]["password"])
         self.password = self.password if self.password else ""
         self.uuid : int = uuid.getnode()
@@ -28,10 +29,16 @@ class ArchipelagoClient(ABC) :
         self.logger = logger
     
     async def connect(self) :
-        self.ap_connection = await connect(
-            f"wss://{self.client_url}:{self.client_port}",
+        if self.self_hosted :
+            self.ap_connection = await connect(
+            f"ws://{self.client_url}:{self.client_port}",
             max_size=None
-        )
+            )
+        else :
+            self.ap_connection = await connect(
+                f"wss://{self.client_url}:{self.client_port}",
+                max_size=None
+            )
         
     async def send_message(self, message: dict) -> None :
         try :
