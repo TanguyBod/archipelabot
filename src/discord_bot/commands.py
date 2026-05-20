@@ -10,6 +10,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from io import BytesIO
 import discord
+from world.world import EntryView
 
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
@@ -63,6 +64,13 @@ async def send_new_items(bot, player_id) :
 
 
 def setup_commands(bot):
+    
+    @bot.command()
+    async def newWorld(ctx):
+        await ctx.send(
+            "Click to configure your world",
+            view=EntryView()
+        )
     
     @bot.command(name='hint')
     async def hint(ctx, *, hint: str):

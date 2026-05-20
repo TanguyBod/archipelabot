@@ -79,6 +79,12 @@ class ArchipelagoClient(ABC) :
             except ConnectionClosedOK:
                 print("Connection closed gracefully.")
                 break
+            except asyncio.CancelledError:
+                print("Archipelago client shutting down...")
+                # nettoyage éventuel
+                if self.ap_connection:
+                    await self.ap_connection.close()
+                raise
             except Exception as e:
                 print(f"Connection error: {e}")
                 await asyncio.sleep(5)
