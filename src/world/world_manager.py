@@ -18,13 +18,15 @@ class WorldManager:
         message_queue = asyncio.Queue()
         ping_queue = asyncio.Queue()
         dm_queue = asyncio.Queue()
+        world_logger = self.logger.getChild(world_id)
+        admin_ids = config["DiscordConfig"].get("admin_ids", [])
 
         bot_client = BotClient(
             config = config,
             message_queue = message_queue,
             ping_queue = ping_queue,
             dm_queue = dm_queue,
-            logger = self.logger,
+            logger = world_logger,
             datadir = world_data_dir
         )
         
@@ -36,7 +38,8 @@ class WorldManager:
             message_queue = message_queue,
             ping_queue = ping_queue,
             dm_queue = dm_queue,
-            logger = self.logger
+            logger = world_logger,
+            admin_ids = admin_ids
         )
         
         await session.start()
@@ -88,7 +91,8 @@ class WorldSession:
         message_queue,
         ping_queue,
         dm_queue,
-        logger
+        logger,
+        admin_ids = []
     ):
         self.bot = bot
         self.bot_client = bot_client
@@ -99,6 +103,7 @@ class WorldSession:
         self.ping_queue = ping_queue
         self.dm_queue = dm_queue
         self.tasks = []
+        self.admin_ids = admin_ids
     
     async def discord_sender(self, channel, queue):
         while True:

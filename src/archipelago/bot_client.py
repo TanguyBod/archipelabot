@@ -39,7 +39,7 @@ class BotClient(ArchipelagoClient) :
         while self.running:
             try :
                 message = await self.message_queue.get()
-                self.logger.info(f"Processing message: {message}")
+                self.logger.debug(f"Processing message: {message}")
                 if message["cmd"] == "RoomInfo" :
                     # Check DataPackage and send connect
                     await self.check_data_package()
@@ -75,7 +75,7 @@ class BotClient(ArchipelagoClient) :
 
     async def process_bounced_message(self, message: dict) -> None :
         if message["tags"] == ['DeathLink'] :
-            self.logger.info(f"Processing DeathLink message")
+            self.logger.debug(f"Processing DeathLink message")
             dead_player_name = message["data"]['source']
             death_time = message["data"]['time']
             death_cause = message["data"]['cause']
@@ -147,8 +147,11 @@ class BotClient(ArchipelagoClient) :
             
         elif message["type"] == "Join" :
             if message["tags"] == ["TextOnly"] or message["tags"] == ["Tracker"] :
-                self.logger.info(f"Received Join message from TextOnly client, ignoring it for player count : {message['slot']}")
+                self.logger.debug(f"Received Join message from TextOnly client, ignoring it for player count : {message['slot']}")
                 return # Ignore Join messages from TextOnly clients, count only when playing
+            if str(message["data"][0]["text"]).startswith(self.slot_name) :
+                self.logger.debug(f"Received Join message for bot slot {self.slot_name}, ignoring it.")
+                return # Ignore Join messages from the bot itself
             player_slot = int(message["slot"])
             player = self.player_db.get_player_by_slot(player_slot)
             if player is None :
@@ -178,7 +181,7 @@ class BotClient(ArchipelagoClient) :
             else :
                 self.logger.warning(f"Received Part message for player {player.player_name} in slot {player_slot} but player was not marked as playing.")
         else :
-            self.logger.warning(f"Unknown message type : {message['type']} --> \n {message}")
+            self.logger.debug(f"Unknown message type : {message['type']} --> \n {message}")
 
     async def process_item_send(self, receiving_field: str, item_field: dict) -> Item :
         player_recieving = self.player_db.get_player_by_slot(int(receiving_field))
