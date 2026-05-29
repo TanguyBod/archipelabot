@@ -12,7 +12,8 @@ logging.getLogger("discord").setLevel(logging.WARNING)
 
 async def main():
     # Load .env file
-    load_dotenv()
+    if os.path.exists(".env"):
+        load_dotenv()
     datadir = os.getenv("DATA_DIRECTORY", "data")
     os.makedirs(datadir, exist_ok=True)
     discord_bot = create_bot(logger)

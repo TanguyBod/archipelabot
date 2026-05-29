@@ -1,0 +1,15 @@
+services:
+  archilink:
+    build: .
+    container_name: archilink
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - archilink-data:/app/data
+    working_dir: /app
+    command: python src/main.py
+
+volumes:
+  archilink-data:
+
