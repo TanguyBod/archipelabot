@@ -5,7 +5,6 @@ import json
 STEPS = [
     "ArchipelagoConfig",
     "DiscordConfig",
-    "DatabaseConfig",
     "AdvancedConfig"
 ]
         
@@ -41,9 +40,9 @@ class WorldConfigSelection(discord.ui.View):
         step_name = STEPS[0]
         embed = discord.Embed(
             title="⚙️ Configuration - ArchipelagoConfig",
-            description=f"There are 4 steps to configure a new multiworld instance. Use the buttons to navigate and edit each section.\
+            description=f"There are 3 steps to configure a new multiworld instance. Use the buttons to navigate and edit each section.\
 \nYou have 10 minutes to complete the configuration, after that the wizard will expire and you will need to start again.\
-\nCurrently on step 1/4: {step_name}",
+\nCurrently on step 1/3: {step_name}",
             color=0x00ffcc
         )
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -116,7 +115,6 @@ class ConfigWizardState:
         self.data = {
             "ArchipelagoConfig": {},
             "DiscordConfig": {},
-            "DatabaseConfig": {},
             "AdvancedConfig": {}
         }
         self.step = 0
@@ -174,7 +172,6 @@ class ConfigWizardView(discord.ui.View):
         modals = {
             "ArchipelagoConfig": ArchipelagoModal,
             "DiscordConfig": DiscordConfigModal,
-            "DatabaseConfig": DatabaseModal,
             "AdvancedConfig": AdvancedModal
         }
 
@@ -228,11 +225,18 @@ class ArchipelagoModal(discord.ui.Modal, title="Archipelago Config"):
             default=config.get("bot_slot", "ArchiLink"),
             required=True
         )
+        
+        self.self_hosted = discord.ui.TextInput(
+            label="Self Hosted (true/false)",
+            default=str(config.get("self_hosted", False)).lower(),
+            required=True
+        )
 
         self.add_item(self.client_url)
         self.add_item(self.client_port)
         self.add_item(self.password)
         self.add_item(self.bot_slot)
+        self.add_item(self.self_hosted)
 
     async def on_submit(self, interaction: discord.Interaction):
 
@@ -254,13 +258,6 @@ class DiscordConfigModal(discord.ui.Modal, title="Discord Config"):
         self.state = state
         self.view = view
         
-        self.app_token = discord.ui.TextInput(
-            label="App Token",
-            placeholder="Enter your app token",
-            default=state.data.get("DiscordConfig", {}).get("app_token", ""),
-            required=True
-        )
-        
         self.normal_channel_id = discord.ui.TextInput(
             label="Normal Channel ID",
             placeholder="Enter the ID of the normal channel",
@@ -275,59 +272,23 @@ class DiscordConfigModal(discord.ui.Modal, title="Discord Config"):
             required=False
         )
         
-        self.debug_channel_id = discord.ui.TextInput(
-            label="Debug Channel ID",
-            placeholder="Enter the ID of the debug channel (optional)",
-            default=state.data.get("DiscordConfig", {}).get("debug_channel_id", "") or "",
+        self.admin_ids = discord.ui.TextInput(
+            label="Admin IDs (comma separated)",
+            placeholder="Enter the IDs of the admins, separated by commas (optional)",
+            default=",".join(state.data.get("DiscordConfig", {}).get("admin_ids", [])),
             required=False
         )
         
-        self.command_prefix = discord.ui.TextInput(
-            label="Command Prefix",
-            placeholder="Enter the command prefix",
-            default=state.data.get("DiscordConfig", {}).get("command_prefix", "!"),
-            required=True
-        )
-        
-        self.add_item(self.app_token)
         self.add_item(self.normal_channel_id)
         self.add_item(self.ping_channel_id)
-        self.add_item(self.debug_channel_id)
-        self.add_item(self.command_prefix)
+        self.add_item(self.admin_ids)
     
     async def on_submit(self, interaction: discord.Interaction):
 
         self.state.data["DiscordConfig"] = {
-            "app_token": self.app_token.value,
             "normal_channel_id": self.normal_channel_id.value,
             "ping_channel_id": self.ping_channel_id.value or None,
-            "debug_channel_id": self.debug_channel_id.value or None,
-            "command_prefix": self.command_prefix.value or "!",
             "admin_ids": []
-        }
-        
-        await self.view.update_message(interaction)
-        
-class DatabaseModal(discord.ui.Modal, title="Database Config"):
-
-    def __init__(self, state, view):
-        super().__init__()
-        self.state = state
-        self.view = view
-        
-        self.data_directory = discord.ui.TextInput(
-            label="Data Directory",
-            placeholder="Enter the directory for data storage",
-            default=state.data.get("DatabaseConfig", {}).get("data_directory", "./data"),
-            required=True
-        )
-        
-        self.add_item(self.data_directory)
-
-    async def on_submit(self, interaction: discord.Interaction):
-
-        self.state.data["DatabaseConfig"] = {
-            "data_directory": self.data_directory.value
         }
         
         await self.view.update_message(interaction)

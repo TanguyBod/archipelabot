@@ -1,4 +1,4 @@
-def check_config(data) -> bool :
+def check_config(data) :
     # Check if all required fields are present
     required_fields = [
         "ArchipelagoConfig",
@@ -7,7 +7,7 @@ def check_config(data) -> bool :
     ]
     for field in required_fields:
         if field not in data:
-            return False
+            return data, False
         
     # Check if all required subfields are present
     archipelago_config_fields = [
@@ -19,7 +19,7 @@ def check_config(data) -> bool :
     ]
     for field in archipelago_config_fields:
         if field not in data["ArchipelagoConfig"]:
-            return False
+            return data, False
         
     discord_config_fields = [
         "normal_channel_id",
@@ -28,7 +28,7 @@ def check_config(data) -> bool :
     ]
     for field in discord_config_fields:
         if field not in data["DiscordConfig"]:
-            return False
+            return data, False
         
     advanced_config_fields = [
         "custom_deathlink_flavor",
@@ -36,6 +36,12 @@ def check_config(data) -> bool :
     ]    
     for field in advanced_config_fields:
         if field not in data["AdvancedConfig"]:
-            return False
+            return data, False
         
-    return True
+    # Trim data to only the required fields to avoid storing unnecessary data
+    trimmed_data = {}
+    trimmed_data["ArchipelagoConfig"] = {field: data["ArchipelagoConfig"][field] for field in archipelago_config_fields}
+    trimmed_data["DiscordConfig"] = {field: data["DiscordConfig"][field] for field in discord_config_fields}
+    trimmed_data["AdvancedConfig"] = {field: data["AdvancedConfig"][field] for field in advanced_config_fields}
+        
+    return trimmed_data, True

@@ -20,6 +20,10 @@ class WorldManager:
         dm_queue = asyncio.Queue()
         world_logger = self.logger.getChild(world_id)
         admin_ids = config["DiscordConfig"].get("admin_ids", [])
+        normal_channel_id = config["DiscordConfig"]["normal_channel_id"]
+        for session in self.worlds.values():
+            if session.normal_channel_id == normal_channel_id:
+                return "already_exists"
 
         bot_client = BotClient(
             config = config,
@@ -33,13 +37,14 @@ class WorldManager:
         session = WorldSession(
             bot = self.bot,
             bot_client = bot_client,
-            normal_channel_id = config["DiscordConfig"]["normal_channel_id"],
+            normal_channel_id = normal_channel_id,
             ping_channel_id = config["DiscordConfig"]["ping_channel_id"],
             message_queue = message_queue,
             ping_queue = ping_queue,
             dm_queue = dm_queue,
             logger = world_logger,
-            admin_ids = admin_ids
+            admin_ids = admin_ids,
+            world_id = world_id
         )
         
         await session.start()
@@ -56,6 +61,17 @@ class WorldManager:
         await session.bot_client.stop()
         await session.stop()
         del self.worlds[world_id]
+        
+    async def delete_world(self, world_id: str):
+        await self.stop_world(world_id)
+        world_data_dir = os.path.join(self.datadir, world_id)
+        if os.path.exists(world_data_dir):
+            for root, dirs, files in os.walk(world_data_dir, topdown=False):
+                for name in files:
+                    os.remove(os.path.join(root, name))
+                for name in dirs:
+                    os.rmdir(os.path.join(root, name))
+            os.rmdir(world_data_dir)
         
     async def stop_all_worlds(self):
         world_ids = list(self.worlds.keys())
@@ -92,7 +108,8 @@ class WorldSession:
         ping_queue,
         dm_queue,
         logger,
-        admin_ids = []
+        admin_ids = [],
+        world_id = None
     ):
         self.bot = bot
         self.bot_client = bot_client
@@ -104,7 +121,8 @@ class WorldSession:
         self.dm_queue = dm_queue
         self.tasks = []
         self.admin_ids = admin_ids
-    
+        self.world_id = world_id
+
     async def discord_sender(self, channel, queue):
         while True:
             msg = await queue.get()

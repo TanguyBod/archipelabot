@@ -18,5 +18,5 @@ def create_bot(logger) :
     bot.remove_command('help')
     setup_commands(bot)
     setup_events(bot)
-    setup_admin_commands(bot) # TODO : adapt admin commands
+    setup_admin_commands(bot)
     return bot
