@@ -2,6 +2,7 @@ from archipelago.hint_client import HintClient
 from models.discord_profil import DiscordProfile
 from models.button import Button
 from utils.colors import get_ansi_color_from_flag
+from utils.name_finder import resolve_player_name
 from discord_bot.texts_flavors import *
 import asyncio
 import re
@@ -118,12 +119,16 @@ def setup_commands(bot):
             await ctx.send("This channel is not associated to any world. Please use the commands in the correct channel or create a new world with !newWorld.")
             return
         # Check if player name is valid
-        if player_name not in session.bot_client.player_db.get_all_players_names() :
+        player_name = resolve_player_name(player_name, session.bot_client.player_db.get_all_players_names())
+        if player_name is None :
             await ctx.send(f"Player name {player_name} not found. Please check the spelling and try again.\n\
 Available player names are : {', '.join(session.bot_client.player_db.get_all_players_names())}")
         elif session.bot_client.player_db.get_player_by_name(player_name).discord_id is not None :
             player = session.bot_client.player_db.get_player_by_name(player_name)
-            await ctx.send(f"Player {player_name} is already registered by {player.discord_id}.\nIf you think this is an error, please contact the administrator.")
+            if player.discord_id == ctx.author.id :
+                await ctx.send(f"You are already registered to player {player_name}.")
+            else :
+                await ctx.send(f"Player {player_name} is already registered by {player.discord_id}.\nIf you think this is an error, please contact the administrator.")
         else :
             discord_profil = session.bot_client.discord_db.get_discord_profile(ctx.author.id)
             if discord_profil is None :
@@ -149,7 +154,8 @@ You are currently registered to : {', '.join([p.player_name for p in discord_pro
         if registered_players == [] :
             await ctx.send(f"You are not registered to any player. Please register first using `!register <player_name>` command.")
             return
-        elif player_name is not None and player_name not in registered_players :
+        player_name = resolve_player_name(player_name, registered_players) if player_name else None
+        if player_name is not None and player_name not in registered_players :
             await ctx.send(f"You are not registered to player {player_name}. You are currently registered to : {', '.join(registered_players)}.")
         elif player_name is not None and player_name in registered_players :
             player = session.bot_client.player_db.get_player_by_name(player_name)
