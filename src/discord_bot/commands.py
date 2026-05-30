@@ -550,7 +550,7 @@ You are currently registered to : {', '.join([p.player_name for p in discord_pro
                 "**Available commands**\n\n"
                 "`!newWorld` - Create and initialize a new Archipelago multiworld.\n"
                 "This command can be used in any channel and allows you to set up a new multiworld session with interactive configuration or by uploading a `config.json` file.\n\n"
-                "`!delete_world` - Delete the multiworld associated with the current channel.\n"
+                "`!deleteWorld` - Delete the multiworld associated with the current channel.\n"
                 "This command stops the bot from tracking the multiworld in this channel and removes all related data, but does not affect the actual Archipelago session.\n"
                 "If admins are configured in the world, only admins can use this command."
             )
