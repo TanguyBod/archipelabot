@@ -88,28 +88,19 @@ This slot must exist in your generated Archipelago multiworld.
 "bot_slot": "DiscordBot"
 ```
 
+## `self_hosted`
+
+```json
+"self_hosted" : false
+```
+
+False if the multiworld is hosted on archipelago.gg. True if it's self-hosted.
+
 ---
 
 # `DiscordConfig`
 
 Configuration related to the Discord bot.
-
----
-
-## `app_token`
-
-```json
-"app_token": ""
-```
-
-Your Discord bot token from the Discord Developer Portal.
-
-
-### Example
-
-```json
-"app_token": "YOUR_DISCORD_BOT_TOKEN"
-```
 
 ---
 
@@ -145,31 +136,6 @@ The Discord channel ID used for item pings or important notifications. If not se
 
 ---
 
-## `command_prefix`
-
-```json
-"command_prefix": "!"
-```
-
-Prefix used for bot commands in Discord.
-
-### Example
-
-If the prefix is:
-
-```json
-"command_prefix": "!"
-```
-
-Commands will look like:
-
-```text
-!help
-!status
-```
-
----
-
 ## `admin_ids`
 
 ```json
@@ -188,38 +154,6 @@ List of Discord user IDs allowed to access admin-only commands.
 ```
 
 > 💡 To get a Discord user ID, enable **Developer Mode** in Discord and right-click a user.
-
----
-
-# `DatabaseConfig`
-
-Configuration related to local data storage.
-
----
-
-## `data_directory`
-
-```json
-"data_directory": "./data"
-```
-
-Directory where the bot stores its local data and database files.
-
-Relative and absolute paths are supported.
-
-### Examples
-
-Relative path:
-
-```json
-"data_directory": "./data"
-```
-
-Absolute path:
-
-```json
-"data_directory": "/home/user/archilink/data"
-```
 
 ---
 
@@ -265,31 +199,34 @@ This field allow the bot to send message new items to a player when he join the 
 
 ---
 
+## `player_colors_limited`
+
+```json
+"player_colors_limited": false
+```
+
+Enabling this option will prevent item colors from being used as player colors.
+
 # Full Example
 
 ```json
 {
     "ArchipelagoConfig": {
-        "client_url" : "archipelago.gg",
-        "client_port" : "38281",
+        "client_url" : "127.0.0.5",
+        "client_port" : "12345",
         "password" : null,
-        "bot_slot" : "Archipelabot"
+        "bot_slot" : "ArchiLink",
+        "self_hosted" : true
     },
     "DiscordConfig": {
-        "app_token" : "YOUR_BOT_TOKEN",
-        "normal_channel_id" : "123456789012345678",
-        "ping_channel_id" : "123456789012345678",
-        "command_prefix" : "!",
-        "admin_ids" : [
-            "123456789012345678"
-        ]
-    },
-    "DatabaseConfig": {
-        "data_directory" : "./data"
+        "normal_channel_id" : "123456789",
+        "ping_channel_id" : "987654321", 
+        "admin_ids" : [159753852, 654456825]
     },
     "AdvancedConfig": {
         "custom_deathlink_flavor" : false,
-        "auto_ping_new_items" : true
+        "auto_ping_new_items" : true,
+        "player_colors_limited" : false
     }
 }
 ```

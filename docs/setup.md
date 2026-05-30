@@ -49,8 +49,6 @@ Enable:
 
 - `Send Messages`
 
-> You can add more permissions later if your bot requires them.
-
 ---
 
 ## 3. Configure the bot
@@ -199,5 +197,7 @@ pip install -r requirements.txt
 Your bot is now setup and ready to use.
 
 Your first interaction with it should be to add a new MultiWorld. To do so, use !newWorld command. Then you can either configure the world to track manually or uploading a json file. If you want to upload a json file, there is a template to fill :`config.template.json`
+
+All fields are described [here](https://github.com/TanguyBod/ArchiLink/blob/main/docs/json.md)
 
 Have fun!
