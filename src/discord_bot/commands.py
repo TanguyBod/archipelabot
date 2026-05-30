@@ -546,24 +546,33 @@ You are currently registered to : {', '.join([p.player_name for p in discord_pro
     async def help(ctx, command: str = None):
         session = await check_world_channel(bot, ctx.channel.id)
         if session is None :
-            await ctx.send("To create a new world, use the !newWorld command.")
+            msg = (
+                "**Available commands**\n\n"
+                "`!newWorld` - Create and initialize a new Archipelago multiworld.\n"
+                "This command can be used in any channel and allows you to set up a new multiworld session with interactive configuration or by uploading a `config.json` file.\n\n"
+                "`!delete_world` - Delete the multiworld associated with the current channel.\n"
+                "This command stops the bot from tracking the multiworld in this channel and removes all related data, but does not affect the actual Archipelago session.\n"
+                "If admins are configured in the world, only admins can use this command."
+            )
+            await ctx.send(msg)
             return
 
         commands_help = {
             "register": {
                 "usage": "`!register <player_name>`",
-                "description": "Register your Discord account to a player.",
+                "description": "Link your Discord account to a player.",
                 "details": (
                     "You will receive notifications about this player's items and gain access "
-                    "to player-specific commands such as `!todo`, `!wishlist`, and `!new`.\n\n"
-                    "Example: `!register Alice`"
+                    "to player-specific commands.\n\n"
+                    "Example:\n"
+                    "`!register Alice`"
                 )
             },
             "unregister": {
                 "usage": "`!unregister [player_name]`",
-                "description": "Unregister your Discord account from a player.",
+                "description": "Unlink your account from one or more players.",
                 "details": (
-                    "If no player name is provided, you will be unregistered from your current player.\n\n"
+                    "If no player is specified, you will be unregistered from all registered players.\n\n"
                     "Examples:\n"
                     "`!unregister`\n"
                     "`!unregister Alice`"
@@ -574,43 +583,49 @@ You are currently registered to : {', '.join([p.player_name for p in discord_pro
                 "description": "Display all players in the multiworld.",
                 "details": "Useful to verify the exact spelling of player names."
             },
+            "current": {
+                "usage": "`!current`",
+                "description": "Display your currently tracked player.",
+                "details": (
+                    "This player is used by commands such as "
+                    "`!todo`, `!wishlist`, `!hint`, and `!new`."
+                )
+            },
+            "switch": {
+                "usage": "`!switch [player_name]`",
+                "description": "Change your tracked player.",
+                "details": (
+                    "Without arguments, switches to the next registered player.\n"
+                    "With a player name, directly switches to that player.\n\n"
+                    "Examples:\n"
+                    "`!switch`\n"
+                    "`!switch Alice`"
+                )
+            },
             "hint": {
                 "usage": "`!hint <text>`",
-                "description": "Send a hint query to the tracker.",
+                "description": "Send a hint request to the tracker.",
                 "details": (
-                    "Recognized hints may provide buttons to add items to todo lists.\n\n"
-                    "Example: `!hint City Crest`"
+                    "Recognized hints may provide interactions such as "
+                    "adding items to your todo list.\n\n"
+                    "Example:\n"
+                    "`!hint City Crest`"
                 )
             },
             "new": {
                 "usage": "`!new`",
                 "description": "Check newly received items.",
-                "details": "New items are sent through DM to avoid channel spam."
-            },
-            "enableping": {
-                "usage": "`!enableping`",
-                "description": "Allow the bot to ping you.",
-                "details": "You may be pinged when another player finds an item relevant to your todo list."
-            },
-            "disableping": {
-                "usage": "`!disableping`",
-                "description": "Disable bot pings.",
-                "details": "The bot won't ping you anymore."
-            },
-            "enablenewitems": {
-                "usage": "`!enablenewitems`",
-                "description": "Enable automatic DM notifications for new items.",
-                "details": "You will automatically receive newly collected items in DM when connecting your game."
-            },
-            "disablenewitems": {
-                "usage": "`!disablenewitems`",
-                "description": "Disable automatic DM notifications for new items.",
-                "details": "You will need to use `!new` manually to check for received items."
+                "details": (
+                    "Displays items received since your last check. "
+                    "Results are sent through DM."
+                )
             },
             "todo": {
                 "usage": "`!todo`",
-                "description": "Show your todo list.",
-                "details": "Displays all tracked items you still need to collect or verify."
+                "description": "Display your todo list.",
+                "details": (
+                    "Shows the items currently tracked for your active player."
+                )
             },
             "cleartodo": {
                 "usage": "`!clearTodo`",
@@ -619,13 +634,46 @@ You are currently registered to : {', '.join([p.player_name for p in discord_pro
             },
             "removetodo": {
                 "usage": "`!removeTodo <item_name>`",
-                "description": "Remove a specific item from your todo list.",
-                "details": "Example: `!removeTodo Hookshot`"
+                "description": "Remove an item from your todo list.",
+                "details": (
+                    "Example:\n"
+                    "`!removeTodo Hookshot`"
+                )
             },
             "wishlist": {
                 "usage": "`!wishlist`",
-                "description": "Display items other players have marked for you.",
-                "details": "Shows all wishlist items targeting your player."
+                "description": "Display items other players marked for you.",
+                "details": (
+                    "Shows all wishlist items targeting your currently tracked player."
+                )
+            },
+            "enableping": {
+                "usage": "`!enableping`",
+                "description": "Enable todo notifications.",
+                "details": (
+                    "You will be pinged when another player finds an item "
+                    "present in your todo list."
+                )
+            },
+            "disableping": {
+                "usage": "`!disableping`",
+                "description": "Disable todo notifications.",
+                "details": "Stops ping notifications from the bot."
+            },
+            "enablenewitems": {
+                "usage": "`!enablenewitems`",
+                "description": "Enable automatic new item notifications.",
+                "details": (
+                    "You will automatically receive newly collected items "
+                    "via DM when connecting to the game."
+                )
+            },
+            "disablenewitems": {
+                "usage": "`!disablenewitems`",
+                "description": "Disable automatic new item notifications.",
+                "details": (
+                    "You will need to use `!new` manually to check received items."
+                )
             },
             "wastedonarchipelago": {
                 "usage": "`!wastedOnArchipelago`",
@@ -639,33 +687,66 @@ You are currently registered to : {', '.join([p.player_name for p in discord_pro
             },
             "deathgraph": {
                 "usage": "`!deathgraph`",
-                "description": "Generate a graph of your deaths over time.",
-                "details": "Displays cumulative deaths based on playtime progression."
+                "description": "Generate a death progression graph.",
+                "details": "Displays cumulative deaths over time."
             },
             "globaldeaths": {
                 "usage": "`!globaldeaths`",
-                "description": "Display total deaths for all players.",
-                "details": "Generates a comparison graph between all players."
+                "description": "Compare deaths between all players.",
+                "details": "Generates a comparative graph for every player."
             },
             "progressgraph": {
                 "usage": "`!progressGraph`",
-                "description": "Generate a progression graph for all players.",
-                "details": "Shows completion percentages and checked locations for every player."
+                "description": "Generate a progression graph.",
+                "details": (
+                    "Displays progression information for all players "
+                    "(checks found, completion percentage, etc.)."
+                )
             },
             "help": {
                 "usage": "`!help [command]`",
                 "description": "Display help information.",
-                "details": "Use without arguments to list all commands or specify a command for detailed help."
+                "details": (
+                    "Use without arguments to list all commands or specify "
+                    "a command for detailed help."
+                )
             }
         }
 
         if command is None:
-            msg = "**Available commands:**\n\n"
+            msg = (
+                "**Available commands**\n\n"
 
-            for cmd_name, data in commands_help.items():
-                msg += f"{data['usage']} : {data['description']}\n"
+                "**Player management**\n"
+                "`!register <player>`\n"
+                "`!unregister [player]`\n"
+                "`!players`\n"
+                "`!current`\n"
+                "`!switch [player]`\n\n"
 
-            msg += "\nUse `!help <command>` for detailed information about a specific command."
+                "**Hints & progression**\n"
+                "`!hint <text>`\n"
+                "`!todo`\n"
+                "`!clearTodo`\n"
+                "`!removeTodo <item>`\n"
+                "`!wishlist`\n"
+                "`!new`\n\n"
+
+                "**Statistics**\n"
+                "`!wastedOnArchipelago`\n"
+                "`!deaths`\n"
+                "`!deathgraph`\n"
+                "`!globaldeaths`\n"
+                "`!progressGraph`\n\n"
+
+                "**Notifications**\n"
+                "`!enableping`\n"
+                "`!disableping`\n"
+                "`!enablenewitems`\n"
+                "`!disablenewitems`\n\n"
+
+                "Use `!help <command>` for detailed information about a specific command."
+            )
             await ctx.send(msg)
             return
 
