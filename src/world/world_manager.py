@@ -20,13 +20,11 @@ class WorldManager:
         dm_queue = asyncio.Queue()
         world_logger = self.logger.getChild(world_id)
         admin_ids = config["DiscordConfig"].get("admin_ids", [])
-        normal_channel_id = config["DiscordConfig"]["normal_channel_id"]
+        normal_channel_id = int(config["DiscordConfig"]["normal_channel_id"])
         for session in self.worlds.values():
             if session.normal_channel_id == normal_channel_id:
                 return "already_exists"
-        ping_channel_id = config["DiscordConfig"].get("ping_channel_id")
-        if not ping_channel_id :
-            ping_channel_id = normal_channel_id
+        ping_channel_id = int(config["DiscordConfig"].get("ping_channel_id", normal_channel_id))
 
         bot_client = BotClient(
             config = config,
