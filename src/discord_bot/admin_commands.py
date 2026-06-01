@@ -71,7 +71,7 @@ def setup_admin_commands(bot) :
                 await ctx.send("A world is already associated with the selected normal channel.\n\
 Please delete the existing world before creating a new one or use a different normal channel in the configuration.")
                 return
-            await ctx.send(f"World created. You can now use the commands to interact with your world in the configured channel.")
+            await ctx.send(f"World created. You can now use the commands to interact with your world in {msg}.")
         except Exception as e:
             bot.custom_logger.error(f"Error creating world: {e}")
             await ctx.send(f"An error occurred while creating the world. Please try again later.")
@@ -92,3 +92,30 @@ Please delete the existing world before creating a new one or use a different no
         except Exception as e:
             bot.custom_logger.error(f"Error deleting world: {e}")
             await ctx.send(f"An error occurred while deleting the world. Please try again later.")
+            
+    @bot.command(name="listWorlds", help="List all worlds in the current discord server. Usage: !listWorlds")
+    async def list_worlds(ctx):
+        worlds = bot.world_manager.worlds
+        if not worlds:
+            await ctx.send("No worlds exist on this server.")
+            return
+        channel_link_list = []
+        for session in worlds.values():
+            normal_channel = bot.get_channel(session.normal_channel_id)
+            if normal_channel and normal_channel.guild.id == ctx.guild.id:
+                channel_link_list.append(f"https://discord.com/channels/{normal_channel.guild.id}/{normal_channel.id}")
+        if not channel_link_list:
+            await ctx.send("No worlds exist on this server.")
+            return
+        await ctx.send(f"There are {len(channel_link_list)} worlds on this server on the following channels:\n{chr(10).join(channel_link_list)}")
+
+    @bot.command(name="isAdmin", help="Check if a user is an admin. Usage: !isAdmin")
+    async def is_admin(ctx):
+        session = bot.world_manager.get_world_from_channel(ctx.channel.id)
+        if session is None:
+            await ctx.send("No world is associated with this channel.")
+            return False
+        if ctx.author.id in session.admin_ids:
+            await ctx.send("You are an admin.")
+        else :
+            await ctx.send("You are not an admin.")

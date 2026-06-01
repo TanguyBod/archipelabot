@@ -20,6 +20,8 @@ class WorldManager:
         dm_queue = asyncio.Queue()
         world_logger = self.logger.getChild(world_id)
         admin_ids = config["DiscordConfig"].get("admin_ids", [])
+        # Make sure all admin ids are integers
+        admin_ids = [int(admin_id) for admin_id in admin_ids]
         normal_channel_id = int(config["DiscordConfig"]["normal_channel_id"])
         for session in self.worlds.values():
             if session.normal_channel_id == normal_channel_id:
@@ -51,7 +53,9 @@ class WorldManager:
         await session.start()
         session.tasks.append(asyncio.create_task(bot_client.run()))
         self.worlds[world_id] = session
-        return 
+        guild = self.bot.get_channel(normal_channel_id).guild
+        channel = self.bot.get_channel(normal_channel_id)
+        return f"https://discord.com/channels/{guild.id}/{channel.id}"
     
     async def stop_world(self, world_id: str):
         session = self.worlds.get(world_id)
