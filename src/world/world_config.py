@@ -318,7 +318,7 @@ class AdvancedModal(discord.ui.Modal, title="Advanced Config"):
         )
         
         self.player_colors_limited = discord.ui.TextInput(
-            label="Use the same colors for players as for items (true/false)",
+            label="Ban item color for players (true/false)",
             placeholder="true/false",
             required=True,
             default="false"
