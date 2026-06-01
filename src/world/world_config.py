@@ -291,7 +291,7 @@ class DiscordConfigModal(discord.ui.Modal, title="Discord Config"):
         self.state.data["DiscordConfig"] = {
             "normal_channel_id": self.normal_channel_id.value,
             "ping_channel_id": self.ping_channel_id.value or None,
-            "admin_ids": []
+            "admin_ids": [int(admin_id.strip()) for admin_id in self.admin_ids.value.split(",") if admin_id.strip().isdigit()]
         }
         
         await self.view.update_message(interaction)
